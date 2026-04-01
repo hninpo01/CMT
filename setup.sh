@@ -1,5 +1,5 @@
-#!/bin/bash
-# CMT ZIVPN PRO - ULTIMATE GLOW & USAGE (FIXED)
+    #!/bin/bash
+# CMT ZIVPN PRO - FINAL STABLE FIX (PASS + IP COPY + USAGE)
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
@@ -28,7 +28,6 @@ app.secret_key = os.environ.get("WEB_SECRET")
 ADMIN_USER = os.environ.get("WEB_ADMIN_USER")
 ADMIN_PASS = os.environ.get("WEB_ADMIN_PASSWORD")
 
-# ✅ အစ်ကို့ရဲ့ CMT Logo Link
 OFFICIAL_LOGO = "https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png"
 
 def get_usage(port):
@@ -66,7 +65,7 @@ HTML = """<!doctype html>
         .grid-box.full { grid-column: span 2; border-color: var(--purple); box-shadow: 0 0 15px rgba(155, 89, 182, 0.4); }
         .grid-val { font-size: 1.3em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
         .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
-        .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
         input { width: 100%; padding: 14px; margin: 8px 0; background: #000; border: 1.5px solid #444; color: #fff !important; border-radius: 12px; box-sizing: border-box; }
         input:focus { border-color: var(--yellow); box-shadow: 0 0 15px var(--yellow); outline: none; }
         .btn { background: linear-gradient(45deg, #ff4500, #ffaa00); color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 0 20px rgba(255, 69, 0, 0.5); }
@@ -75,6 +74,7 @@ HTML = """<!doctype html>
         th { text-align: left; padding: 12px; color: var(--cyan); font-size: 0.8em; border-bottom: 2px solid #1e293b; }
         td { padding: 15px 12px; border-bottom: 1px solid #1e293b; font-size: 0.95em; }
         .usage { color: var(--yellow); font-weight: bold; text-shadow: 0 0 5px var(--yellow); }
+        .copy-btn { background: rgba(78, 115, 223, 0.2); color: #4e73df; border: 1px solid #4e73df; padding: 3px 6px; border-radius: 5px; font-size: 0.7em; cursor: pointer; margin-left: 5px; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #0a0e1a; display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid #4e73df; }
         .nav-item { color: #555; text-decoration: none; text-align: center; font-size: 0.75em; }
         .nav-item i { font-size: 1.8em; display: block; margin-bottom: 5px; }
@@ -96,7 +96,10 @@ HTML = """<!doctype html>
 {% else %}
     <div class="header">
         <div style="display:flex;align-items:center;gap:12px;"><img src="{{ logo }}"><b>CMT ZIVPN PRO PANEL</b></div>
-        <div style="text-align:right;"><small>IP: {{ ip }}</small></div>
+        <div style="text-align:right;">
+            <small>IP: <span id="srvIp">{{ ip }}</span></small>
+            <button class="copy-btn" style="background:#ff4500;color:white;border:none;" onclick="copyText('srvIp')"><i class="fas fa-copy"></i></button>
+        </div>
     </div>
     <div class="container">
         <div class="grid-menu">
@@ -112,11 +115,12 @@ HTML = """<!doctype html>
         </div>
         <div class="table-card">
             <table>
-                <thead><tr><th>USER</th><th>USAGE</th><th>EXPIRY</th><th>STATUS</th><th>ACTION</th></tr></thead>
+                <thead><tr><th>USER</th><th>PASS</th><th>USAGE</th><th>EXPIRY</th><th>STATUS</th><th>ACTION</th></tr></thead>
                 <tbody>
                     {% for u in users %}
                     <tr>
                         <td style="color:var(--cyan); font-weight:bold;">{{ u.user }}</td>
+                        <td><span id="pw_{{u.user}}">{{ u.password }}</span> <button class="copy-btn" onclick="copyText('pw_{{u.user}}')"><i class="fas fa-copy"></i></button></td>
                         <td class="usage">{{ u.usage }}</td>
                         <td style="color:#ff69b4;">{{ u.expires }}</td>
                         <td><span style="color:{{ '#2ecc71' if u.online else '#e74c3c' }}; font-weight:bold;">● {{ 'Online' if u.online else 'Offline' }}</span></td>
@@ -135,6 +139,12 @@ HTML = """<!doctype html>
     </div>
 {% endif %}
 <script>
+    function copyText(id) {
+        var text = document.getElementById(id).innerText;
+        var elem = document.createElement("textarea"); document.body.appendChild(elem);
+        elem.value = text; elem.select(); document.execCommand("copy");
+        document.body.removeChild(elem); alert("Copy Success: " + text);
+    }
     const c=document.getElementById('fireCanvas'),ctx=c.getContext('2d');
     let ps=[]; function rs(){c.width=window.innerWidth;c.height=window.innerHeight;} window.onresize=rs;rs();
     class P { constructor(){this.i();} i(){this.x=Math.random()*c.width;this.y=c.height+10;this.v=Math.random()*1.2+0.5;this.o=Math.random()*0.5;} u(){this.y-=this.v;if(this.y<-10)this.i();} d(){ctx.fillStyle="rgba(255, 75, 0, "+this.o+")";ctx.beginPath();ctx.arc(this.x,this.y,2.5,0,Math.PI*2);ctx.fill();}}
@@ -167,23 +177,31 @@ def add():
     if not session.get("auth"): return redirect("/")
     u, p, d = request.form.get("user"), request.form.get("password"), request.form.get("days")
     exp = (datetime.datetime.now() + datetime.timedelta(days=int(d))).strftime("%Y-%m-%d") if d.isdigit() else d
-    with open("/etc/zivpn/users.json","r") as f: users = json.load(f)
+    users = []
+    if os.path.exists("/etc/zivpn/users.json"):
+        with open("/etc/zivpn/users.json","r") as f: users = json.load(f)
     port = str(max([int(x.get("port", 6000)) for x in users] + [6000]) + 1)
     users.insert(0, {"user":u, "password":p, "expires":exp, "port":port})
     with open("/etc/zivpn/users.json","w") as f: json.dump(users, f, indent=2)
-    with open("/etc/zivpn/config.json","r") as f: cfg = json.load(f)
-    cfg["auth"]["config"] = [x["password"] for x in users]
-    with open("/etc/zivpn/config.json","w") as f: json.dump(cfg, f, indent=2)
-    subprocess.run("systemctl restart zivpn", shell=True)
+    if os.path.exists("/etc/zivpn/config.json"):
+        with open("/etc/zivpn/config.json","r") as f: cfg = json.load(f)
+        cfg["auth"]["config"] = [x["password"] for x in users]
+        with open("/etc/zivpn/config.json","w") as f: json.dump(cfg, f, indent=2)
+        subprocess.run("systemctl restart zivpn", shell=True)
     return redirect("/")
 
 @app.route("/delete", methods=["POST"])
 def delete():
     if not session.get("auth"): return redirect("/")
     name = request.form.get("user")
-    with open("/etc/zivpn/users.json","r") as f: users = json.load(f)
-    users = [x for x in users if x["user"] != name]
-    with open("/etc/zivpn/users.json","w") as f: json.dump(users, f, indent=2)
+    if os.path.exists("/etc/zivpn/users.json"):
+        with open("/etc/zivpn/users.json","r") as f: users = json.load(f)
+        users = [x for x in users if x["user"] != name]
+        with open("/etc/zivpn/users.json","w") as f: json.dump(users, f, indent=2)
+        with open("/etc/zivpn/config.json","r") as f: cfg = json.load(f)
+        cfg["auth"]["config"] = [x["password"] for x in users]
+        with open("/etc/zivpn/config.json","w") as f: json.dump(cfg, f, indent=2)
+        subprocess.run("systemctl restart zivpn", shell=True)
     return redirect("/")
 
 @app.route("/logout")
@@ -193,4 +211,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ Login Logo Fixed & 5-Grid Ready! http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Full Fix Completed! (Pass + IP Copy Added) http://$(hostname -I | awk '{print $1}'):8080"
