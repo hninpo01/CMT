@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - RAINBOW RECTANGLE INPUT EDITION
+# CMT ZIVPN PRO - FULL RAINBOW GLOW INPUT EDITION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
@@ -56,25 +56,25 @@ HTML = """<!doctype html>
         body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
         #bgCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050810; }
 
-        @keyframes rainbowGlow {
+        @keyframes rainbowBG {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
+
+        .title-container { text-align: center; padding: 25px 0; border-bottom: 2px solid var(--cyan); background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
+        
         .rainbow-text {
             font-weight: bold;
             background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #9b59b6, #ff0000);
             background-size: 300% 300%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: rainbowGlow 5s linear infinite;
+            animation: rainbowBG 5s linear infinite;
         }
 
-        .title-container { text-align: center; padding: 25px 0; border-bottom: 2px solid var(--cyan); background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
-        .main-title { font-size: 2.2em; letter-spacing: 2px; text-shadow: 0 0 15px var(--cyan); }
-
         .header { background: rgba(0,0,0,0.5); padding: 15px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(10px); }
-        .header img { border-radius: 50%; border: 2px solid #fff; width: 45px; height: 45px; background: #fff; box-shadow: 0 0 10px #fff; }
+        .header img { border-radius: 50%; border: 2px solid #fff; width: 45px; height: 45px; background: #fff; }
         
         .social-row { display: flex; gap: 12px; }
         .btn-social { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; text-decoration: none; font-size: 1.3em; transition: 0.3s; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
@@ -87,44 +87,47 @@ HTML = """<!doctype html>
         .grid-box { background: var(--card); border: 2.5px solid var(--glow); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
         .grid-box.full { grid-column: span 2; border-color: var(--purple); }
         .grid-val { font-size: 1.4em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
-        .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; }
 
-        .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; }
         
-        /* ✅ Rainbow Rectangle Input Style (အစ်ကိုလိုချင်တဲ့ လေထောင်ကွက် အရောင်စုံ) */
+        /* ✅ အခုပြင်လိုက်တဲ့ Full Rainbow Glow Input Style */
         input { 
-            width: 100%; padding: 14px 15px; margin: 12px 0; 
-            background: linear-gradient(90deg, rgba(255,0,0,0.1), rgba(0,255,0,0.1), rgba(0,0,255,0.1));
+            width: 100%; padding: 15px 20px; margin: 12px 0; 
+            /* အထဲက အနောက်ခံကိုပါ အရောင်ပြေးအောင် လုပ်ထားပါတယ် */
+            background: linear-gradient(90deg, #ff000033, #ffaa0033, #2ecc7133, #00d4ff33, #9b59b633);
+            background-size: 400% 400%;
+            animation: rainbowBG 6s ease infinite;
             color: #fff !important; 
-            border-radius: 10px; /* လေထောင်ကွက်ပုံစံ */
-            border: 2px solid;
-            border-image: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #9b59b6, #ff0000) 1;
+            border: 2px solid var(--cyan);
+            border-radius: 12px;
             box-sizing: border-box;
             outline: none;
-            transition: 0.3s;
             font-weight: bold;
+            text-shadow: 1px 1px 3px #000;
+            box-shadow: inset 0 0 10px rgba(0,212,255,0.2);
         }
+        input::placeholder { color: rgba(255,255,255,0.7); }
         input:focus {
-            background: rgba(255,255,255,0.1);
-            box-shadow: 0 0 15px rgba(0,212,255,0.5);
+            border-color: var(--yellow);
+            box-shadow: 0 0 15px var(--yellow);
+            background: linear-gradient(90deg, #ff000055, #ffaa0055, #2ecc7155, #00d4ff55, #9b59b655);
         }
 
         .main-btn { 
             background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); 
             background-size: 300% 300%;
-            animation: rainbowGlow 4s linear infinite;
-            color: #fff; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; text-shadow: 1px 1px 5px #000;
+            animation: rainbowBG 4s linear infinite;
+            color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; text-shadow: 1px 1px 5px #000;
             box-shadow: 0 0 15px rgba(255,0,0,0.4);
         }
         
-        .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 12px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
+        .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 12px; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 550px; }
-        th { text-align: left; padding: 12px; color: var(--cyan); font-size: 0.85em; border-bottom: 2px solid #1e293b; }
-        td { padding: 15px 12px; border-bottom: 1px solid #1e293b; font-size: 0.95em; }
+        th { text-align: left; padding: 12px; color: var(--cyan); border-bottom: 2px solid #1e293b; }
+        td { padding: 15px 12px; border-bottom: 1px solid #1e293b; }
 
-        .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 8px; transition: 0.2s; }
-        .delete-btn { color: #ff4444; cursor: pointer; background: none; border: none; font-size: 1.2em; transition: 0.3s; }
-        .delete-btn:hover { color: #ff0000; transform: scale(1.3); }
+        .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 8px; }
+        .delete-btn { color: #ff4444; background: none; border: none; font-size: 1.2em; cursor: pointer; }
 
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--cyan); }
         .nav-item { color: #555; font-size: 1.8em; }
@@ -135,8 +138,8 @@ HTML = """<!doctype html>
 <canvas id="bgCanvas"></canvas>
 
 {% if not session.get('auth') %}
-    <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 20px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 50px rgba(255, 69, 0, 0.7);">
-        <img src="{{ logo }}" width="85" style="background:#fff; border-radius:20px; margin-bottom:25px; box-shadow: 0 0 15px #fff;">
+    <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 20px; text-align: center; border: 3px solid var(--glow);">
+        <img src="{{ logo }}" width="85" style="background:#fff; border-radius:20px; margin-bottom:25px;">
         <h2 class="rainbow-text" style="font-size: 2em;">CMT LOGIN</h2>
         <form method="post" action="/login_check">
             <input name="u" placeholder="Admin Name" required>
@@ -159,14 +162,14 @@ HTML = """<!doctype html>
     </div>
 
     <div class="container">
-        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; border: 1px solid var(--cyan);"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid var(--cyan);"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
         
         <div class="grid-menu">
-            <div class="grid-box"><div class="grid-label">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
-            <div class="grid-box" style="border-color:var(--green);"><div class="grid-label">Online</div><div class="grid-val" style="color:var(--green);">{{ active_count }}</div></div>
-            <div class="grid-box full"><div class="grid-label">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.1em;">{{ uptime }}</div></div>
-            <div class="grid-box" style="border-color:#3498db;"><div class="grid-label">Bandwidth</div><div class="grid-val" style="color:#3498db;">{{ total_usage }}</div></div>
-            <div class="grid-box" style="border-color:#e67e22;"><div class="grid-label">Server Load</div><div class="grid-val" style="color:#e67e22;">12%</div></div>
+            <div class="grid-box"><div style="font-size:0.7em;">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
+            <div class="grid-box" style="border-color:var(--green);"><div style="font-size:0.7em;">Online</div><div class="grid-val" style="color:var(--green);">{{ active_count }}</div></div>
+            <div class="grid-box full"><div style="font-size:0.7em;">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.2em;">{{ uptime }}</div></div>
+            <div class="grid-box" style="border-color:#3498db;"><div style="font-size:0.7em;">Bandwidth</div><div class="grid-val" style="color:#3498db;">{{ total_usage }}</div></div>
+            <div class="grid-box" style="border-color:#e67e22;"><div style="font-size:0.7em;">Server Load</div><div class="grid-val" style="color:#e67e22;">12%</div></div>
         </div>
 
         <div class="card">
@@ -188,7 +191,7 @@ HTML = """<!doctype html>
                         <td><span id="pw{{loop.index}}">{{ u.password }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('pw{{loop.index}}')"></i></td>
                         <td style="color:var(--yellow); font-weight:bold;">{{ u.usage }}</td>
                         <td style="color:#ff69b4;">{{ u.expires }}</td>
-                        <td><i class="fas fa-circle" style="color:{{ 'var(--green)' if u.online else 'var(--glow)' }}; font-size: 0.8em;"></i> {{ 'Online' if u.online else 'Offline' }}</td>
+                        <td><i class="fas fa-circle" style="color:{{ 'var(--green)' if u.online else 'var(--glow)' }};"></i> {{ 'Online' if u.online else 'Offline' }}</td>
                         <td>
                             <form method="post" action="/delete" style="display:inline;" onsubmit="return confirm('ဖျက်မှာ သေချာလား?')">
                                 <input type="hidden" name="user" value="{{u.user}}">
@@ -302,4 +305,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ Rectangle Rainbow Input Update Done! http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Full Rainbow Background Input Update! http://$(hostname -I | awk '{print $1}'):8080"
