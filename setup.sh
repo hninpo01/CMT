@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - CAPSULE RAINBOW INPUT EDITION
+# CMT ZIVPN PRO - RAINBOW RECTANGLE INPUT EDITION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
@@ -48,7 +48,7 @@ def get_uptime():
 HTML = """<!doctype html>
 <html lang="my" translate="no">
 <head>
-    <meta charset="UTF-12"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>CMT ZIVPN PRO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -91,28 +91,29 @@ HTML = """<!doctype html>
 
         .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
         
-        /* ✅ Capsule Rainbow Input Style (အသစ်) */
+        /* ✅ Rainbow Rectangle Input Style (အစ်ကိုလိုချင်တဲ့ လေထောင်ကွက် အရောင်စုံ) */
         input { 
-            width: 100%; padding: 14px 20px; margin: 12px 0; 
-            background: rgba(0,0,0,0.8); 
+            width: 100%; padding: 14px 15px; margin: 12px 0; 
+            background: linear-gradient(90deg, rgba(255,0,0,0.1), rgba(0,255,0,0.1), rgba(0,0,255,0.1));
             color: #fff !important; 
-            border-radius: 50px; /* ဆေးတောင့်ပုံစံ */
+            border-radius: 10px; /* လေထောင်ကွက်ပုံစံ */
             border: 2px solid;
-            border-image-source: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000);
-            border-image-slice: 1;
+            border-image: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #9b59b6, #ff0000) 1;
             box-sizing: border-box;
             outline: none;
             transition: 0.3s;
+            font-weight: bold;
         }
-        /* Fallback for border-radius with border-image */
-        input { border: 2.5px solid var(--cyan); border-image: none; }
-        input:focus { border-color: var(--yellow); box-shadow: 0 0 15px var(--yellow); }
+        input:focus {
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 0 15px rgba(0,212,255,0.5);
+        }
 
         .main-btn { 
             background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); 
             background-size: 300% 300%;
             animation: rainbowGlow 4s linear infinite;
-            color: #fff; border: none; padding: 15px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; text-shadow: 1px 1px 5px #000;
+            color: #fff; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; text-shadow: 1px 1px 5px #000;
             box-shadow: 0 0 15px rgba(255,0,0,0.4);
         }
         
@@ -134,7 +135,7 @@ HTML = """<!doctype html>
 <canvas id="bgCanvas"></canvas>
 
 {% if not session.get('auth') %}
-    <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 30px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 50px rgba(255, 69, 0, 0.7);">
+    <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 20px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 50px rgba(255, 69, 0, 0.7);">
         <img src="{{ logo }}" width="85" style="background:#fff; border-radius:20px; margin-bottom:25px; box-shadow: 0 0 15px #fff;">
         <h2 class="rainbow-text" style="font-size: 2em;">CMT LOGIN</h2>
         <form method="post" action="/login_check">
@@ -158,12 +159,12 @@ HTML = """<!doctype html>
     </div>
 
     <div class="container">
-        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 50px; border: 1px solid var(--cyan);"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; border: 1px solid var(--cyan);"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
         
         <div class="grid-menu">
             <div class="grid-box"><div class="grid-label">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
             <div class="grid-box" style="border-color:var(--green);"><div class="grid-label">Online</div><div class="grid-val" style="color:var(--green);">{{ active_count }}</div></div>
-            <div class="grid-box full"><div class="grid-label">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.2em;">{{ uptime }}</div></div>
+            <div class="grid-box full"><div class="grid-label">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.1em;">{{ uptime }}</div></div>
             <div class="grid-box" style="border-color:#3498db;"><div class="grid-label">Bandwidth</div><div class="grid-val" style="color:#3498db;">{{ total_usage }}</div></div>
             <div class="grid-box" style="border-color:#e67e22;"><div class="grid-label">Server Load</div><div class="grid-val" style="color:#e67e22;">12%</div></div>
         </div>
@@ -301,4 +302,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ Capsule Input Update Done! http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Rectangle Rainbow Input Update Done! http://$(hostname -I | awk '{print $1}'):8080"
