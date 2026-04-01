@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - ULTIMATE SOCIAL FIXED VERSION
+# CMT ZIVPN PRO - ULTIMATE DESIGN V4 (APP STYLE EFFECTS)
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
@@ -52,11 +52,11 @@ HTML = """<!doctype html>
     <title>CMT ZIVPN PRO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --bg: #050810; --card: rgba(16, 22, 42, 0.85); --glow: #ff4500; --cyan: #00d4ff; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
+        :root { --bg: #050810; --card: rgba(16, 22, 42, 0.88); --glow: #ff4500; --cyan: #00d4ff; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
         body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
         #bgCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050810; }
 
-        @keyframes rainbowText {
+        @keyframes rainbowGlow {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
@@ -67,32 +67,37 @@ HTML = """<!doctype html>
             background-size: 300% 300%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: rainbowText 5s linear infinite;
+            animation: rainbowGlow 5s linear infinite;
         }
 
-        .title-container { text-align: center; padding: 25px 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-bottom: 2px solid var(--cyan); }
-        .main-title { font-size: 2.2em; letter-spacing: 2px; }
+        .title-container { text-align: center; padding: 25px 0; border-bottom: 2px solid var(--cyan); background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
+        .main-title { font-size: 2.2em; letter-spacing: 2px; text-shadow: 0 0 15px var(--cyan); }
 
         .header { background: rgba(0,0,0,0.5); padding: 15px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(10px); }
-        .header img { border-radius: 50%; border: 2px solid #fff; width: 45px; height: 45px; background: #fff; }
+        .header img { border-radius: 50%; border: 2px solid #fff; width: 45px; height: 45px; background: #fff; box-shadow: 0 0 10px #fff; }
         
         .social-row { display: flex; gap: 12px; }
         .btn-social { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; text-decoration: none; font-size: 1.3em; transition: 0.3s; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
         .btn-tg { background: #0088cc; }
         .btn-fb { background: #1877f2; }
         .btn-msg { background: linear-gradient(45deg, #00c6ff, #0072ff, #bc00ff); }
-        .btn-social:hover { transform: scale(1.2); box-shadow: 0 0 15px white; }
 
         .container { padding: 15px; }
         .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
-        .grid-box { background: var(--card); border: 2.5px solid var(--glow); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
+        .grid-box { background: var(--card); border: 2px solid var(--glow); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
         .grid-box.full { grid-column: span 2; border-color: var(--purple); }
         .grid-val { font-size: 1.4em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
-        .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; }
 
         .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
         input { width: 100%; padding: 14px; margin: 8px 0; background: rgba(0,0,0,0.7); border: 1.5px solid #444; color: #fff !important; border-radius: 12px; box-sizing: border-box; }
-        .btn { background: linear-gradient(45deg, #ff4500, #ffaa00); color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; }
+        
+        .main-btn { 
+            background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); 
+            background-size: 300% 300%;
+            animation: rainbowGlow 4s linear infinite;
+            color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; text-shadow: 1px 1px 5px #000;
+        }
         
         .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 12px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
         table { width: 100%; border-collapse: collapse; min-width: 550px; }
@@ -100,7 +105,8 @@ HTML = """<!doctype html>
         td { padding: 15px 12px; border-bottom: 1px solid #1e293b; font-size: 0.95em; }
 
         .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 8px; transition: 0.2s; }
-        .copy-btn:active { transform: scale(1.4); }
+        .delete-btn { color: #ff4444; cursor: pointer; background: none; border: none; font-size: 1.2em; transition: 0.3s; }
+        .delete-btn:hover { color: #ff0000; transform: scale(1.3); }
 
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--cyan); }
         .nav-item { color: #555; font-size: 1.8em; }
@@ -114,7 +120,7 @@ HTML = """<!doctype html>
     <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 30px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 50px rgba(255, 69, 0, 0.7);">
         <img src="{{ logo }}" width="85" style="background:#fff; border-radius:20px; margin-bottom:25px; box-shadow: 0 0 15px #fff;">
         <h2 class="rainbow-text" style="font-size: 2em;">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin" required><input name="p" type="password" placeholder="Pass" required><button class="btn" style="margin-top:20px; width:100%;">LOGIN</button></form>
+        <form method="post" action="/login_check"><input name="u" placeholder="Admin" required><input name="p" type="password" placeholder="Pass" required><button class="main-btn" style="margin-top:20px;">DASHBOARD LOGIN</button></form>
     </div>
 {% else %}
     <div class="title-container">
@@ -122,7 +128,7 @@ HTML = """<!doctype html>
     </div>
 
     <div class="header">
-        <div style="display:flex;align-items:center;gap:12px;"><img src="{{ logo }}"><b>DASHBOARD</b></div>
+        <img src="{{ logo }}">
         <div class="social-row">
             <a href="https://t.me/CMT_1411" class="btn-social btn-tg" target="_blank"><i class="fab fa-telegram-plane"></i></a>
             <a href="https://www.facebook.com/ChitMinThu1239" class="btn-social btn-fb" target="_blank"><i class="fab fa-facebook-f"></i></a>
@@ -131,23 +137,23 @@ HTML = """<!doctype html>
     </div>
 
     <div class="container">
-        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 12px;"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid var(--cyan);"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
         
         <div class="grid-menu">
             <div class="grid-box"><div class="grid-label">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
             <div class="grid-box" style="border-color:var(--green);"><div class="grid-label">Online</div><div class="grid-val" style="color:var(--green);">{{ active_count }}</div></div>
-            <div class="grid-box full"><div class="grid-label">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.1em;">{{ uptime }}</div></div>
+            <div class="grid-box full"><div class="grid-label">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.2em;">{{ uptime }}</div></div>
             <div class="grid-box" style="border-color:#3498db;"><div class="grid-label">Bandwidth</div><div class="grid-val" style="color:#3498db;">{{ total_usage }}</div></div>
             <div class="grid-box" style="border-color:#e67e22;"><div class="grid-label">Server Load</div><div class="grid-val" style="color:#e67e22;">12%</div></div>
         </div>
 
         <div class="card">
-            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days" required><button class="btn">CREATE USER</button></form>
+            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days" required><button class="main-btn">CREATE USER</button></form>
         </div>
 
         <div class="table-card">
             <table>
-                <thead><tr><th>USER</th><th>PASS</th><th>USAGE</th><th>EXPIRY</th><th>STATUS</th></tr></thead>
+                <thead><tr><th>USER</th><th>PASS</th><th>USAGE</th><th>EXPIRY</th><th>STATUS</th><th>ACTION</th></tr></thead>
                 <tbody>
                     {% for u in users %}
                     <tr>
@@ -155,7 +161,13 @@ HTML = """<!doctype html>
                         <td><span id="pw{{loop.index}}">{{ u.password }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('pw{{loop.index}}')"></i></td>
                         <td style="color:var(--yellow); font-weight:bold;">{{ u.usage }}</td>
                         <td style="color:#ff69b4;">{{ u.expires }}</td>
-                        <td><i class="fas fa-circle" style="color:{{ 'var(--green)' if u.online else 'var(--glow)' }};"></i> {{ 'Online' if u.online else 'Offline' }}</td>
+                        <td><i class="fas fa-circle" style="color:{{ 'var(--green)' if u.online else 'var(--glow)' }}; font-size: 0.8em;"></i> {{ 'Online' if u.online else 'Offline' }}</td>
+                        <td>
+                            <form method="post" action="/delete" style="display:inline;" onsubmit="return confirm('ဖျက်မှာ သေချာလား?')">
+                                <input type="hidden" name="user" value="{{u.user}}">
+                                <button type="submit" class="delete-btn"><i class="fas fa-trash-alt"></i></button>
+                            </form>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -176,7 +188,6 @@ HTML = """<!doctype html>
         alert("Copied: " + text);
     }
 
-    /* ✅ Advanced Network Lines Script */
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
     let pts = [];
@@ -185,16 +196,14 @@ HTML = """<!doctype html>
 
     class Pt {
         constructor() {
-            this.x = Math.random()*canvas.width;
-            this.y = Math.random()*canvas.height;
-            this.vx = (Math.random()-0.5)*1.2; 
-            this.vy = (Math.random()-0.5)*1.2;
-            this.radius = Math.random()*2.8 + 1; 
+            this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height;
+            this.vx = (Math.random()-0.5)*1.2; this.vy = (Math.random()-0.5)*1.2;
+            this.radius = Math.random()*3 + 1; 
         }
         up() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width)this.vx*=-1; if(this.y<0||this.y>canvas.height)this.vy*=-1; }
-        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(0,212,255,0.6)'; ctx.fill(); }
+        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(0, 212, 255, 0.6)'; ctx.fill(); }
     }
-    for(let i=0;i<75;i++) pts.push(new Pt()); 
+    for(let i=0;i<80;i++) pts.push(new Pt()); 
     function anim() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         pts.forEach((p,i)=>{
@@ -203,7 +212,7 @@ HTML = """<!doctype html>
                 let d = Math.hypot(p.x-pts[j].x, p.y-pts[j].y);
                 if(d<130){ 
                     ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y);
-                    ctx.strokeStyle='rgba(255,69,0,'+(1-d/130)+')'; 
+                    ctx.strokeStyle='rgba(255, 69, 0, '+(1-d/130)+')'; 
                     ctx.lineWidth=1.0; ctx.stroke(); 
                 }
             }
@@ -250,6 +259,15 @@ def add():
     subprocess.run("systemctl restart zivpn", shell=True)
     return redirect("/")
 
+@app.route("/delete", methods=["POST"])
+def delete():
+    if not session.get("auth"): return redirect("/")
+    name = request.form.get("user")
+    with open("/etc/zivpn/users.json","r") as f: users = json.load(f)
+    users = [x for x in users if x["user"] != name]
+    with open("/etc/zivpn/users.json","w") as f: json.dump(users, f, indent=2)
+    return redirect("/")
+
 @app.route("/logout")
 def logout(): session.clear(); return redirect("/")
 
@@ -257,4 +275,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ Final Ultimate Update! (Social Links Fixed) http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Ultimate Design V4 Ready! (5-Grid + Social + App Effects) http://$(hostname -I | awk '{print $1}'):8080"
