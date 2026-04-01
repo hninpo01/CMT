@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - RAINBOW LINES & MUTED DOTS EDITION
+# CMT ZIVPN PRO - CAPSULE RAINBOW INPUT EDITION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
@@ -13,8 +13,6 @@ echo "WEB_SECRET=$(openssl rand -hex 16)" >> "$ENVF"
 
 # Networking Setup
 sysctl -w net.ipv4.ip_forward=1 >/dev/null
-iptables -N ZIVPN_TRAFFIC 2>/dev/null || true
-iptables -C FORWARD -j ZIVPN_TRAFFIC 2>/dev/null || iptables -I FORWARD -j ZIVPN_TRAFFIC
 iptables -t nat -A PREROUTING -p udp --dport 6000:19999 -j DNAT --to-destination :5667 2>/dev/null || true
 iptables -t nat -A POSTROUTING -j MASQUERADE 2>/dev/null || true
 
@@ -50,7 +48,7 @@ def get_uptime():
 HTML = """<!doctype html>
 <html lang="my" translate="no">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="UTF-12"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>CMT ZIVPN PRO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -86,19 +84,36 @@ HTML = """<!doctype html>
 
         .container { padding: 15px; }
         .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
-        .grid-box { background: var(--card); border: 2px solid var(--glow); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
+        .grid-box { background: var(--card); border: 2.5px solid var(--glow); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
         .grid-box.full { grid-column: span 2; border-color: var(--purple); }
         .grid-val { font-size: 1.4em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
         .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; }
 
         .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
-        input { width: 100%; padding: 14px; margin: 8px 0; background: rgba(0,0,0,0.7); border: 1.5px solid #444; color: #fff !important; border-radius: 12px; box-sizing: border-box; }
         
+        /* ✅ Capsule Rainbow Input Style (အသစ်) */
+        input { 
+            width: 100%; padding: 14px 20px; margin: 12px 0; 
+            background: rgba(0,0,0,0.8); 
+            color: #fff !important; 
+            border-radius: 50px; /* ဆေးတောင့်ပုံစံ */
+            border: 2px solid;
+            border-image-source: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000);
+            border-image-slice: 1;
+            box-sizing: border-box;
+            outline: none;
+            transition: 0.3s;
+        }
+        /* Fallback for border-radius with border-image */
+        input { border: 2.5px solid var(--cyan); border-image: none; }
+        input:focus { border-color: var(--yellow); box-shadow: 0 0 15px var(--yellow); }
+
         .main-btn { 
             background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); 
             background-size: 300% 300%;
             animation: rainbowGlow 4s linear infinite;
-            color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; text-shadow: 1px 1px 5px #000;
+            color: #fff; border: none; padding: 15px; border-radius: 50px; font-weight: bold; width: 100%; cursor: pointer; text-shadow: 1px 1px 5px #000;
+            box-shadow: 0 0 15px rgba(255,0,0,0.4);
         }
         
         .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 12px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
@@ -122,7 +137,11 @@ HTML = """<!doctype html>
     <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 30px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 50px rgba(255, 69, 0, 0.7);">
         <img src="{{ logo }}" width="85" style="background:#fff; border-radius:20px; margin-bottom:25px; box-shadow: 0 0 15px #fff;">
         <h2 class="rainbow-text" style="font-size: 2em;">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin" required><input name="p" type="password" placeholder="Pass" required><button class="main-btn" style="margin-top:20px;">DASHBOARD LOGIN</button></form>
+        <form method="post" action="/login_check">
+            <input name="u" placeholder="Admin Name" required>
+            <input name="p" type="password" placeholder="Admin Pass" required>
+            <button class="main-btn" style="margin-top:20px;">DASHBOARD LOGIN</button>
+        </form>
     </div>
 {% else %}
     <div class="title-container">
@@ -139,7 +158,7 @@ HTML = """<!doctype html>
     </div>
 
     <div class="container">
-        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 12px; border: 1px solid var(--cyan);"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 50px; border: 1px solid var(--cyan);"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
         
         <div class="grid-menu">
             <div class="grid-box"><div class="grid-label">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
@@ -150,7 +169,12 @@ HTML = """<!doctype html>
         </div>
 
         <div class="card">
-            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days" required><button class="main-btn">CREATE USER</button></form>
+            <form method="post" action="/add">
+                <input name="user" placeholder="Enter Name" required>
+                <input name="password" placeholder="Enter Password" required>
+                <input name="days" placeholder="Enter Days" required>
+                <button class="main-btn">CREATE & SYNC USER</button>
+            </form>
         </div>
 
         <div class="table-card">
@@ -189,15 +213,12 @@ HTML = """<!doctype html>
         navigator.clipboard.writeText(text);
         alert("Copied: " + text);
     }
-
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
     let pts = [];
-    let hue = 0; // ✅ For rainbow color shifting
-
+    let hue = 0;
     function init() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.onresize = init; init();
-
     class Pt {
         constructor() {
             this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height;
@@ -205,19 +226,18 @@ HTML = """<!doctype html>
             this.radius = Math.random()*2.5 + 1; 
         }
         up() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width)this.vx*=-1; if(this.y<0||this.y>canvas.height)this.vy*=-1; }
-        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(255, 255, 255, 0.15)'; ctx.fill(); } // ✅ Muted dots
+        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(255, 255, 255, 0.15)'; ctx.fill(); }
     }
     for(let i=0;i<85;i++) pts.push(new Pt()); 
     function anim() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
-        hue += 0.5; // ✅ Shift rainbow color slowly
+        hue += 0.5;
         pts.forEach((p,i)=>{
             p.up(); p.dr();
             for(let j=i+1;j<pts.length;j++){
                 let d = Math.hypot(p.x-pts[j].x, p.y-pts[j].y);
                 if(d<125){ 
                     ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y);
-                    // ✅ Rainbow lines with slight fade
                     ctx.strokeStyle='hsla('+(hue + d)+', 70%, 60%, '+(1-d/125)*0.8+')'; 
                     ctx.lineWidth=0.8; ctx.stroke(); 
                 }
@@ -281,4 +301,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ Rainbow Lines & Muted Dots Updated! http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Capsule Input Update Done! http://$(hostname -I | awk '{print $1}'):8080"
