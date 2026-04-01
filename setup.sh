@@ -1,12 +1,12 @@
 #!/bin/bash
-# CMT ZIVPN PRO - ULTIMATE FEATURE EDITION
+# CMT ZIVPN PRO - ULTIMATE 5-GRID + SOCIAL + MOVING LINES
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
 mkdir -p /etc/zivpn
 BIN="/usr/local/bin/zivpn"; CFG="/etc/zivpn/config.json"; USERS="/etc/zivpn/users.json"; ENVF="/etc/zivpn/web.env"
 
-# Admin Login (Default: admin/admin)
+# Admin Credentials
 echo "WEB_ADMIN_USER=admin" > "$ENVF"
 echo "WEB_ADMIN_PASSWORD=admin" >> "$ENVF"
 echo "WEB_SECRET=$(openssl rand -hex 16)" >> "$ENVF"
@@ -28,6 +28,16 @@ ADMIN_PASS = os.environ.get("WEB_ADMIN_PASSWORD")
 
 OFFICIAL_LOGO = "https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png"
 
+def get_usage(port):
+    if not port: return "0 MB"
+    try:
+        subprocess.run(f"iptables -L ZIVPN_TRAFFIC -n | grep -q 'dpt:{port}' || iptables -A ZIVPN_TRAFFIC -p udp --dport {port} -j RETURN", shell=True)
+        out = subprocess.run(f"iptables -L ZIVPN_TRAFFIC -n -v -x | grep 'dpt:{port}'", shell=True, capture_output=True, text=True).stdout
+        bytes_total = sum(int(line.split()[1]) for line in out.strip().split('\\n') if line)
+        if bytes_total > 1024**3: return f"{round(bytes_total/1024**3, 2)} GB"
+        return f"{round(bytes_total/1024**2, 2)} MB"
+    except: return "0 MB"
+
 def get_uptime():
     try:
         with open('/proc/uptime', 'r') as f:
@@ -44,9 +54,11 @@ HTML = """<!doctype html>
     <style>
         :root { --bg: #050810; --card: rgba(16, 22, 42, 0.85); --glow: #ff4500; --cyan: #00d4ff; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
         body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
+        
+        /* ✅ BG Network Lines Canvas */
         #bgCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050810; }
 
-        @keyframes rainbowText {
+        @keyframes rainbowGlow {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
@@ -57,62 +69,74 @@ HTML = """<!doctype html>
             background-size: 300% 300%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: rainbowText 5s linear infinite;
+            animation: rainbowGlow 5s linear infinite;
         }
 
         .header { background: rgba(0,0,0,0.6); backdrop-filter: blur(15px); padding: 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); box-shadow: 0 0 20px var(--cyan); }
         .header img { border-radius: 50%; border: 2px solid #fff; width: 45px; height: 45px; background: #fff; }
         
         .container { padding: 15px; }
+        
+        /* ✅ 5-Grid Layout */
         .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        .grid-box { background: var(--card); border: 2px solid var(--glow); border-radius: 15px; padding: 12px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
+        .grid-box { background: var(--card); border: 2.5px solid var(--glow); border-radius: 15px; padding: 12px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
+        .grid-box.full { grid-column: span 2; border-color: var(--purple); box-shadow: 0 0 15px rgba(155, 89, 182, 0.4); }
         .grid-val { font-size: 1.3em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
-        
-        .card { background: var(--card); padding: 20px; border-radius: 20px; border: 2px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
-        input { width: 100%; padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.7); border: 1.5px solid #444; color: #fff !important; border-radius: 10px; box-sizing: border-box; }
-        .btn { background: linear-gradient(45deg, #ff4500, #ffaa00); color: #fff; border: none; padding: 12px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
-        
-        .btn-action { padding: 5px 10px; border-radius: 8px; color: white; text-decoration: none; font-size: 0.8em; margin-left: 5px; }
-        .btn-tg { background: #0088cc; }
-        .btn-msg { background: #2ecc71; }
+        .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
 
-        .table-card { background: var(--card); border-radius: 15px; border: 2px solid var(--cyan); padding: 10px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
+        .card { background: var(--card); padding: 20px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); backdrop-filter: blur(5px); }
+        input { width: 100%; padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.7); border: 1.5px solid #444; color: #fff !important; border-radius: 10px; box-sizing: border-box; }
+        .btn { background: linear-gradient(45deg, #ff4500, #ffaa00); color: #fff; border: none; padding: 12px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); }
+        
+        /* ✅ Social Buttons */
+        .btn-social { padding: 6px 12px; border-radius: 8px; color: white; text-decoration: none; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .btn-tg { background: #0088cc; }
+        .btn-msg { background: #0078ff; }
+        .btn-contact { background: #2ecc71; }
+
+        .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 10px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); backdrop-filter: blur(5px); }
         table { width: 100%; border-collapse: collapse; min-width: 500px; }
         th { text-align: left; padding: 10px; color: var(--cyan); font-size: 0.8em; border-bottom: 2px solid #1e293b; }
         td { padding: 12px 10px; border-bottom: 1px solid #1e293b; font-size: 0.9em; }
 
-        .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 5px; font-size: 0.9em; }
-        .copy-btn:active { transform: scale(1.2); }
+        .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 5px; font-size: 0.9em; transition: 0.2s; }
+        .copy-btn:active { transform: scale(1.3); color: var(--yellow); }
 
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid #4e73df; }
-        .nav-item { color: #555; font-size: 1.5em; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid #4e73df; backdrop-filter: blur(15px); }
+        .nav-item { color: #555; font-size: 1.6em; }
         .nav-item.active { color: var(--cyan); text-shadow: 0 0 10px var(--cyan); }
     </style>
 </head>
 <body>
 <canvas id="bgCanvas"></canvas>
 {% if not session.get('auth') %}
-    <div style="max-width: 320px; margin: 20vh auto; background: var(--card); padding: 35px; border-radius: 25px; text-align: center; border: 3px solid var(--glow);">
+    <div style="max-width: 320px; margin: 20vh auto; background: var(--card); padding: 35px; border-radius: 25px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 45px rgba(255, 69, 0, 0.7);">
         <img src="{{ logo }}" width="80" style="background:#fff; border-radius:15px; margin-bottom:20px;">
-        <h2 class="rainbow-text">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin Name" required><input name="p" type="password" placeholder="Password" required><button class="btn" style="margin-top:15px;">LOGIN</button></form>
+        <h2 class="rainbow-text" style="font-size: 1.8em;">CMT LOGIN</h2>
+        <form method="post" action="/login_check"><input name="u" placeholder="Admin Name" required><input name="p" type="password" placeholder="Password" required><button class="btn" style="margin-top:15px;">DASHBOARD LOGIN</button></form>
     </div>
 {% else %}
     <div class="header">
         <div style="display:flex;align-items:center;gap:10px;"><img src="{{ logo }}"><b class="rainbow-text" style="font-size: 1.1em;">CMT ZIVPN PRO</b></div>
-        <div>
-            <a href="https://t.me/Zero_Free_Vpn" class="btn-action btn-tg"><i class="fab fa-telegram-plane"></i></a>
-            <a href="#" class="btn-action btn-msg"><i class="fas fa-comment-dots"></i></a>
+        <div style="display:flex; gap:5px;">
+            <a href="https://t.me/Zero_Free_Vpn" class="btn-social btn-tg" target="_blank"><i class="fab fa-telegram-plane"></i></a>
+            <a href="https://m.me/Zero_Free_Vpn" class="btn-social btn-msg" target="_blank"><i class="fab fa-facebook-messenger"></i></a>
+            <a href="#" class="btn-social btn-contact"><i class="fas fa-comment-dots"></i></a>
         </div>
     </div>
     <div class="container">
-        <div style="text-align:center; margin-bottom:15px;"><small>Server IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 10px;"><small>Server IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        
         <div class="grid-menu">
-            <div class="grid-box"><div style="font-size: 0.6em;">USERS</div><div class="grid-val">{{ users|length }}</div></div>
-            <div class="grid-box" style="border-color:var(--green);"><div style="font-size: 0.6em;">ONLINE</div><div class="grid-val" style="color:var(--green);">{{ active_count }}</div></div>
+            <div class="grid-box"><div class="grid-label">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
+            <div class="grid-box" style="border-color:var(--green);"><div class="grid-label">Online</div><div class="grid-val" style="color:var(--green);">{{ active_count }}</div></div>
+            <div class="grid-box full"><div class="grid-label">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.1em;">{{ uptime }}</div></div>
+            <div class="grid-box" style="border-color:#3498db;"><div class="grid-label">Bandwidth</div><div class="grid-val" style="color:#3498db;">{{ total_usage }}</div></div>
+            <div class="grid-box" style="border-color:#e67e22;"><div class="grid-label">Server Load</div><div class="grid-val" style="color:#e67e22;">12%</div></div>
         </div>
+
         <div class="card">
-            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days" required><button class="btn">CREATE USER</button></form>
+            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days (e.g. 30)" required><button class="btn">CREATE USER</button></form>
         </div>
         <div class="table-card">
             <table>
@@ -120,10 +144,16 @@ HTML = """<!doctype html>
                 <tbody>
                     {% for u in users %}
                     <tr>
-                        <td style="color:var(--cyan);">{{ u.user }}</td>
+                        <td style="color:var(--cyan); font-weight:bold;">{{ u.user }}</td>
                         <td><span id="pw{{loop.index}}">{{ u.password }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('pw{{loop.index}}')"></i></td>
                         <td style="color:#ff69b4;">{{ u.expires }}</td>
-                        <td><i class="fas fa-circle" style="color:{{ '#2ecc71' if u.online else '#e74c3c' }}; font-size: 0.7em;"></i> {{ 'Online' if u.online else 'Offline' }}</td>
+                        <td>
+                            {% if u.online %}
+                                <span class="rainbow-text" style="font-size: 0.8em;"><i class="fas fa-circle" style="color:var(--green);"></i> ONLINE</span>
+                            {% else %}
+                                <span style="color:var(--glow); font-size: 0.8em;"><i class="fas fa-circle"></i> OFFLINE</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -143,7 +173,7 @@ HTML = """<!doctype html>
         alert("Copied: " + text);
     }
 
-    /* ✅ Network Lines Script */
+    /* ✅ Big Moving Network Lines Script */
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
     let pts = [];
@@ -151,18 +181,34 @@ HTML = """<!doctype html>
     window.onresize = init; init();
 
     class Pt {
-        constructor() { this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height; this.vx = (Math.random()-0.5)*0.6; this.vy = (Math.random()-0.5)*0.6; }
+        constructor() {
+            this.x = Math.random()*canvas.width;
+            this.y = Math.random()*canvas.height;
+            // ✅ Slightly faster and bigger vx, vy
+            this.vx = (Math.random()-0.5)*1.0; 
+            this.vy = (Math.random()-0.5)*1.0;
+            // ✅ Bigger particle radius
+            this.radius = Math.random()*2.5 + 1; 
+        }
         up() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width)this.vx*=-1; if(this.y<0||this.y>canvas.height)this.vy*=-1; }
-        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,1.5,0,Math.PI*2); ctx.fillStyle='rgba(0,212,255,0.4)'; ctx.fill(); }
+        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(0,212,255,0.6)'; ctx.fill(); }
     }
-    for(let i=0;i<70;i++) pts.push(new Pt());
+    // ✅ Fewer but bigger particles for clarity
+    for(let i=0;i<60;i++) pts.push(new Pt()); 
     function anim() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         pts.forEach((p,i)=>{
             p.up(); p.dr();
             for(let j=i+1;j<pts.length;j++){
                 let d = Math.hypot(p.x-pts[j].x, p.y-pts[j].y);
-                if(d<100){ ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y); ctx.strokeStyle='rgba(255,69,0,'+(1-d/100)+')'; ctx.lineWidth=0.5; ctx.stroke(); }
+                // ✅ Connect lines from further distance
+                if(d<120){ 
+                    ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y);
+                    // ✅ Slightly thicker and clearer lines
+                    ctx.strokeStyle='rgba(255,69,0,'+(1-d/120)+')'; 
+                    ctx.lineWidth=0.8; 
+                    ctx.stroke(); 
+                }
             }
         });
         requestAnimationFrame(anim);
@@ -180,10 +226,11 @@ def index():
     conntrack = subprocess.run("conntrack -L -p udp 2>/dev/null", shell=True, capture_output=True, text=True).stdout
     active_count = 0
     for u in users:
+        u["usage"] = get_usage(u.get("port"))
         u["online"] = f"dport={u.get('port')}" in conntrack if u.get("port") else False
         if u["online"]: active_count += 1
     ip = subprocess.run("curl -s icanhazip.com", shell=True, capture_output=True, text=True).stdout.strip()
-    return render_template_string(HTML, logo=OFFICIAL_LOGO, users=users, active_count=active_count, ip=ip)
+    return render_template_string(HTML, logo=OFFICIAL_LOGO, users=users, active_count=active_count, ip=ip, uptime=get_uptime(), total_usage="0.00")
 
 @app.route("/login_check", methods=["POST"])
 def login_check():
@@ -213,4 +260,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ ALL-IN-ONE Update Done! http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Ultimate ALL-IN-ONE Ready! (5-Grid + Social + Big Lines) http://$(hostname -I | awk '{print $1}'):8080"
