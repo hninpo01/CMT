@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - ULTIMATE 5-GRID + SOCIAL + MOVING LINES
+# CMT ZIVPN PRO - ULTIMATE SOCIAL FIXED VERSION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
@@ -29,14 +29,14 @@ ADMIN_PASS = os.environ.get("WEB_ADMIN_PASSWORD")
 OFFICIAL_LOGO = "https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png"
 
 def get_usage(port):
-    if not port: return "0 MB"
+    if not port: return "0.0 MB"
     try:
         subprocess.run(f"iptables -L ZIVPN_TRAFFIC -n | grep -q 'dpt:{port}' || iptables -A ZIVPN_TRAFFIC -p udp --dport {port} -j RETURN", shell=True)
         out = subprocess.run(f"iptables -L ZIVPN_TRAFFIC -n -v -x | grep 'dpt:{port}'", shell=True, capture_output=True, text=True).stdout
         bytes_total = sum(int(line.split()[1]) for line in out.strip().split('\\n') if line)
         if bytes_total > 1024**3: return f"{round(bytes_total/1024**3, 2)} GB"
         return f"{round(bytes_total/1024**2, 2)} MB"
-    except: return "0 MB"
+    except: return "0.0 MB"
 
 def get_uptime():
     try:
@@ -54,11 +54,9 @@ HTML = """<!doctype html>
     <style>
         :root { --bg: #050810; --card: rgba(16, 22, 42, 0.85); --glow: #ff4500; --cyan: #00d4ff; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
         body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
-        
-        /* ✅ BG Network Lines Canvas */
         #bgCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050810; }
 
-        @keyframes rainbowGlow {
+        @keyframes rainbowText {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
@@ -69,63 +67,71 @@ HTML = """<!doctype html>
             background-size: 300% 300%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: rainbowGlow 5s linear infinite;
+            animation: rainbowText 5s linear infinite;
         }
 
-        .header { background: rgba(0,0,0,0.6); backdrop-filter: blur(15px); padding: 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); box-shadow: 0 0 20px var(--cyan); }
+        .title-container { text-align: center; padding: 25px 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-bottom: 2px solid var(--cyan); }
+        .main-title { font-size: 2.2em; letter-spacing: 2px; }
+
+        .header { background: rgba(0,0,0,0.5); padding: 15px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(10px); }
         .header img { border-radius: 50%; border: 2px solid #fff; width: 45px; height: 45px; background: #fff; }
         
+        .social-row { display: flex; gap: 12px; }
+        .btn-social { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; text-decoration: none; font-size: 1.3em; transition: 0.3s; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .btn-tg { background: #0088cc; }
+        .btn-fb { background: #1877f2; }
+        .btn-msg { background: linear-gradient(45deg, #00c6ff, #0072ff, #bc00ff); }
+        .btn-social:hover { transform: scale(1.2); box-shadow: 0 0 15px white; }
+
         .container { padding: 15px; }
-        
-        /* ✅ 5-Grid Layout */
-        .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        .grid-box { background: var(--card); border: 2.5px solid var(--glow); border-radius: 15px; padding: 12px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
-        .grid-box.full { grid-column: span 2; border-color: var(--purple); box-shadow: 0 0 15px rgba(155, 89, 182, 0.4); }
-        .grid-val { font-size: 1.3em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
+        .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .grid-box { background: var(--card); border: 2.5px solid var(--glow); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
+        .grid-box.full { grid-column: span 2; border-color: var(--purple); }
+        .grid-val { font-size: 1.4em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
         .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
 
-        .card { background: var(--card); padding: 20px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); backdrop-filter: blur(5px); }
-        input { width: 100%; padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.7); border: 1.5px solid #444; color: #fff !important; border-radius: 10px; box-sizing: border-box; }
-        .btn { background: linear-gradient(45deg, #ff4500, #ffaa00); color: #fff; border: none; padding: 12px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); }
+        .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
+        input { width: 100%; padding: 14px; margin: 8px 0; background: rgba(0,0,0,0.7); border: 1.5px solid #444; color: #fff !important; border-radius: 12px; box-sizing: border-box; }
+        .btn { background: linear-gradient(45deg, #ff4500, #ffaa00); color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; }
         
-        /* ✅ Social Buttons */
-        .btn-social { padding: 6px 12px; border-radius: 8px; color: white; text-decoration: none; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
-        .btn-tg { background: #0088cc; }
-        .btn-msg { background: #0078ff; }
-        .btn-contact { background: #2ecc71; }
+        .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 12px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
+        table { width: 100%; border-collapse: collapse; min-width: 550px; }
+        th { text-align: left; padding: 12px; color: var(--cyan); font-size: 0.85em; border-bottom: 2px solid #1e293b; }
+        td { padding: 15px 12px; border-bottom: 1px solid #1e293b; font-size: 0.95em; }
 
-        .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 10px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); backdrop-filter: blur(5px); }
-        table { width: 100%; border-collapse: collapse; min-width: 500px; }
-        th { text-align: left; padding: 10px; color: var(--cyan); font-size: 0.8em; border-bottom: 2px solid #1e293b; }
-        td { padding: 12px 10px; border-bottom: 1px solid #1e293b; font-size: 0.9em; }
+        .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 8px; transition: 0.2s; }
+        .copy-btn:active { transform: scale(1.4); }
 
-        .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 5px; font-size: 0.9em; transition: 0.2s; }
-        .copy-btn:active { transform: scale(1.3); color: var(--yellow); }
-
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid #4e73df; backdrop-filter: blur(15px); }
-        .nav-item { color: #555; font-size: 1.6em; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--cyan); }
+        .nav-item { color: #555; font-size: 1.8em; }
         .nav-item.active { color: var(--cyan); text-shadow: 0 0 10px var(--cyan); }
     </style>
 </head>
 <body>
 <canvas id="bgCanvas"></canvas>
+
 {% if not session.get('auth') %}
-    <div style="max-width: 320px; margin: 20vh auto; background: var(--card); padding: 35px; border-radius: 25px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 45px rgba(255, 69, 0, 0.7);">
-        <img src="{{ logo }}" width="80" style="background:#fff; border-radius:15px; margin-bottom:20px;">
-        <h2 class="rainbow-text" style="font-size: 1.8em;">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin Name" required><input name="p" type="password" placeholder="Password" required><button class="btn" style="margin-top:15px;">DASHBOARD LOGIN</button></form>
+    <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 30px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 50px rgba(255, 69, 0, 0.7);">
+        <img src="{{ logo }}" width="85" style="background:#fff; border-radius:20px; margin-bottom:25px; box-shadow: 0 0 15px #fff;">
+        <h2 class="rainbow-text" style="font-size: 2em;">CMT LOGIN</h2>
+        <form method="post" action="/login_check"><input name="u" placeholder="Admin" required><input name="p" type="password" placeholder="Pass" required><button class="btn" style="margin-top:20px; width:100%;">LOGIN</button></form>
     </div>
 {% else %}
+    <div class="title-container">
+        <h1 class="main-title rainbow-text">CMT ZIVPN PRO</h1>
+    </div>
+
     <div class="header">
-        <div style="display:flex;align-items:center;gap:10px;"><img src="{{ logo }}"><b class="rainbow-text" style="font-size: 1.1em;">CMT ZIVPN PRO</b></div>
-        <div style="display:flex; gap:5px;">
-            <a href="https://t.me/Zero_Free_Vpn" class="btn-social btn-tg" target="_blank"><i class="fab fa-telegram-plane"></i></a>
-            <a href="https://m.me/Zero_Free_Vpn" class="btn-social btn-msg" target="_blank"><i class="fab fa-facebook-messenger"></i></a>
-            <a href="#" class="btn-social btn-contact"><i class="fas fa-comment-dots"></i></a>
+        <div style="display:flex;align-items:center;gap:12px;"><img src="{{ logo }}"><b>DASHBOARD</b></div>
+        <div class="social-row">
+            <a href="https://t.me/CMT_1411" class="btn-social btn-tg" target="_blank"><i class="fab fa-telegram-plane"></i></a>
+            <a href="https://www.facebook.com/ChitMinThu1239" class="btn-social btn-fb" target="_blank"><i class="fab fa-facebook-f"></i></a>
+            <a href="https://m.me/ChitMinThu1239" class="btn-social btn-msg" target="_blank"><i class="fab fa-facebook-messenger"></i></a>
         </div>
     </div>
+
     <div class="container">
-        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 10px;"><small>Server IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 12px;"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
         
         <div class="grid-menu">
             <div class="grid-box"><div class="grid-label">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
@@ -136,30 +142,27 @@ HTML = """<!doctype html>
         </div>
 
         <div class="card">
-            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days (e.g. 30)" required><button class="btn">CREATE USER</button></form>
+            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days" required><button class="btn">CREATE USER</button></form>
         </div>
+
         <div class="table-card">
             <table>
-                <thead><tr><th>USER</th><th>PASS</th><th>EXPIRY</th><th>STATUS</th></tr></thead>
+                <thead><tr><th>USER</th><th>PASS</th><th>USAGE</th><th>EXPIRY</th><th>STATUS</th></tr></thead>
                 <tbody>
                     {% for u in users %}
                     <tr>
                         <td style="color:var(--cyan); font-weight:bold;">{{ u.user }}</td>
                         <td><span id="pw{{loop.index}}">{{ u.password }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('pw{{loop.index}}')"></i></td>
+                        <td style="color:var(--yellow); font-weight:bold;">{{ u.usage }}</td>
                         <td style="color:#ff69b4;">{{ u.expires }}</td>
-                        <td>
-                            {% if u.online %}
-                                <span class="rainbow-text" style="font-size: 0.8em;"><i class="fas fa-circle" style="color:var(--green);"></i> ONLINE</span>
-                            {% else %}
-                                <span style="color:var(--glow); font-size: 0.8em;"><i class="fas fa-circle"></i> OFFLINE</span>
-                            {% endif %}
-                        </td>
+                        <td><i class="fas fa-circle" style="color:{{ 'var(--green)' if u.online else 'var(--glow)' }};"></i> {{ 'Online' if u.online else 'Offline' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
     <div class="bottom-nav">
         <a href="/" class="nav-item active"><i class="fas fa-home"></i></a>
         <a href="/logout" class="nav-item"><i class="fas fa-power-off"></i></a>
@@ -173,7 +176,7 @@ HTML = """<!doctype html>
         alert("Copied: " + text);
     }
 
-    /* ✅ Big Moving Network Lines Script */
+    /* ✅ Advanced Network Lines Script */
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
     let pts = [];
@@ -184,30 +187,24 @@ HTML = """<!doctype html>
         constructor() {
             this.x = Math.random()*canvas.width;
             this.y = Math.random()*canvas.height;
-            // ✅ Slightly faster and bigger vx, vy
-            this.vx = (Math.random()-0.5)*1.0; 
-            this.vy = (Math.random()-0.5)*1.0;
-            // ✅ Bigger particle radius
-            this.radius = Math.random()*2.5 + 1; 
+            this.vx = (Math.random()-0.5)*1.2; 
+            this.vy = (Math.random()-0.5)*1.2;
+            this.radius = Math.random()*2.8 + 1; 
         }
         up() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width)this.vx*=-1; if(this.y<0||this.y>canvas.height)this.vy*=-1; }
         dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(0,212,255,0.6)'; ctx.fill(); }
     }
-    // ✅ Fewer but bigger particles for clarity
-    for(let i=0;i<60;i++) pts.push(new Pt()); 
+    for(let i=0;i<75;i++) pts.push(new Pt()); 
     function anim() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
         pts.forEach((p,i)=>{
             p.up(); p.dr();
             for(let j=i+1;j<pts.length;j++){
                 let d = Math.hypot(p.x-pts[j].x, p.y-pts[j].y);
-                // ✅ Connect lines from further distance
-                if(d<120){ 
+                if(d<130){ 
                     ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y);
-                    // ✅ Slightly thicker and clearer lines
-                    ctx.strokeStyle='rgba(255,69,0,'+(1-d/120)+')'; 
-                    ctx.lineWidth=0.8; 
-                    ctx.stroke(); 
+                    ctx.strokeStyle='rgba(255,69,0,'+(1-d/130)+')'; 
+                    ctx.lineWidth=1.0; ctx.stroke(); 
                 }
             }
         });
@@ -260,4 +257,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ Ultimate ALL-IN-ONE Ready! (5-Grid + Social + Big Lines) http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Final Ultimate Update! (Social Links Fixed) http://$(hostname -I | awk '{print $1}'):8080"
