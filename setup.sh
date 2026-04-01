@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - ULTIMATE DESIGN V4 (APP STYLE EFFECTS)
+# CMT ZIVPN PRO - RAINBOW LINES & MUTED DOTS EDITION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
@@ -13,6 +13,8 @@ echo "WEB_SECRET=$(openssl rand -hex 16)" >> "$ENVF"
 
 # Networking Setup
 sysctl -w net.ipv4.ip_forward=1 >/dev/null
+iptables -N ZIVPN_TRAFFIC 2>/dev/null || true
+iptables -C FORWARD -j ZIVPN_TRAFFIC 2>/dev/null || iptables -I FORWARD -j ZIVPN_TRAFFIC
 iptables -t nat -A PREROUTING -p udp --dport 6000:19999 -j DNAT --to-destination :5667 2>/dev/null || true
 iptables -t nat -A POSTROUTING -j MASQUERADE 2>/dev/null || true
 
@@ -191,29 +193,33 @@ HTML = """<!doctype html>
     const canvas = document.getElementById('bgCanvas');
     const ctx = canvas.getContext('2d');
     let pts = [];
+    let hue = 0; // ✅ For rainbow color shifting
+
     function init() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.onresize = init; init();
 
     class Pt {
         constructor() {
             this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height;
-            this.vx = (Math.random()-0.5)*1.2; this.vy = (Math.random()-0.5)*1.2;
-            this.radius = Math.random()*3 + 1; 
+            this.vx = (Math.random()-0.5)*1.0; this.vy = (Math.random()-0.5)*1.0;
+            this.radius = Math.random()*2.5 + 1; 
         }
         up() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width)this.vx*=-1; if(this.y<0||this.y>canvas.height)this.vy*=-1; }
-        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(0, 212, 255, 0.6)'; ctx.fill(); }
+        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(255, 255, 255, 0.15)'; ctx.fill(); } // ✅ Muted dots
     }
-    for(let i=0;i<80;i++) pts.push(new Pt()); 
+    for(let i=0;i<85;i++) pts.push(new Pt()); 
     function anim() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
+        hue += 0.5; // ✅ Shift rainbow color slowly
         pts.forEach((p,i)=>{
             p.up(); p.dr();
             for(let j=i+1;j<pts.length;j++){
                 let d = Math.hypot(p.x-pts[j].x, p.y-pts[j].y);
-                if(d<130){ 
+                if(d<125){ 
                     ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y);
-                    ctx.strokeStyle='rgba(255, 69, 0, '+(1-d/130)+')'; 
-                    ctx.lineWidth=1.0; ctx.stroke(); 
+                    // ✅ Rainbow lines with slight fade
+                    ctx.strokeStyle='hsla('+(hue + d)+', 70%, 60%, '+(1-d/125)*0.8+')'; 
+                    ctx.lineWidth=0.8; ctx.stroke(); 
                 }
             }
         });
@@ -275,4 +281,4 @@ if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
-echo -e "\n✅ Ultimate Design V4 Ready! (5-Grid + Social + App Effects) http://$(hostname -I | awk '{print $1}'):8080"
+echo -e "\n✅ Rainbow Lines & Muted Dots Updated! http://$(hostname -I | awk '{print $1}'):8080"
