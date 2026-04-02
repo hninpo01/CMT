@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - FINAL STABLE VERSION
+# CMT ZIVPN PRO - ULTIMATE STABLE FINAL FIX
 set -euo pipefail
 apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack iptables openssl python3-pip >/dev/null
 pip3 install psutil requests >/dev/null
@@ -7,7 +7,6 @@ pip3 install psutil requests >/dev/null
 mkdir -p /etc/zivpn
 ENVF="/etc/zivpn/web.env"
 
-# Permanent Support Links & Initial Env
 if [ ! -f "$ENVF" ]; then
     echo "WEB_ADMIN_USER=admin" > "$ENVF"
     echo "WEB_ADMIN_PASSWORD=admin" >> "$ENVF"
@@ -47,10 +46,9 @@ def set_env(key, value):
         if not found: f.write(f"{key}={value}\n")
 
 def send_tg(msg):
-    token = get_env("TG_TOKEN")
-    chat_id = get_env("TG_CHAT_ID")
-    if token and chat_id:
-        try: requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={msg}")
+    token, chat = get_env("TG_TOKEN"), get_env("TG_CHAT_ID")
+    if token and chat:
+        try: requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat}&text={msg}")
         except: pass
 
 def get_sys_info():
@@ -65,7 +63,7 @@ HTML = """<!doctype html>
     body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
     #bgCanvas { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background: #050810; }
     @keyframes rb { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    .rainbow-text { font-weight: bold; background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rb 5s linear infinite; }
+    .rainbow-text { font-weight: bold; background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); background-size: 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rb 5s linear infinite; }
     .header { background: rgba(0,0,0,0.7); padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); }
     .logo-img { border-radius: 50%; width: 55px; height: 55px; background: #fff; box-shadow: 0 0 10px #fff; border: 2px solid #fff; }
     .clock-center { flex-grow: 1; text-align: center; }
@@ -152,9 +150,9 @@ HTML = """<!doctype html>
     <div id="supportModal" class="modal">
         <div class="modal-content" style="text-align:center;">
             <h3 class="rainbow-text">ဆက်သွယ်ရန် ရွေးချယ်ပါ</h3>
-            <a href="{{tg}}" target="_blank" style="display:block;padding:15px;margin:10px 0;background:#0088cc;color:#fff;border-radius:12px;text-decoration:none;font-weight:bold;"><i class="fab fa-telegram-plane"></i> Telegram</a>
-            <a href="{{fb}}" target="_blank" style="display:block;padding:15px;margin:10px 0;background:#1877f2;color:#fff;border-radius:12px;text-decoration:none;font-weight:bold;"><i class="fab fa-facebook-f"></i> Facebook</a>
-            <a href="{{msg}}" target="_blank" style="display:block;padding:15px;margin:10px 0;background:linear-gradient(45deg,#00c6ff,#bc00ff);color:#fff;border-radius:12px;text-decoration:none;font-weight:bold;"><i class="fab fa-facebook-messenger"></i> Messenger</a>
+            <a href="{{tg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#0088cc;color:#fff;border-radius:12px;text-decoration:none;font-weight:bold;"><i class="fab fa-telegram-plane"></i> Telegram</a>
+            <a href="{{fb}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#1877f2;color:#fff;border-radius:12px;text-decoration:none;font-weight:bold;"><i class="fab fa-facebook-f"></i> Facebook</a>
+            <a href="{{msg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:linear-gradient(45deg,#00c6ff,#bc00ff);color:#fff;border-radius:12px;text-decoration:none;font-weight:bold;"><i class="fab fa-facebook-messenger"></i> Messenger</a>
             <button onclick="toggleModal('supportModal')" style="background:none;border:none;color:#aaa;margin-top:15px;cursor:pointer;">ပိတ်မည်</button>
         </div>
     </div>
@@ -241,6 +239,14 @@ def update_tg():
         set_env("TG_CHAT_ID", request.form.get("chat_id"))
     return redirect("/settings")
 
+@app.route("/update_links", methods=["POST"])
+def update_links():
+    if session.get("auth"):
+        set_env("SUPPORT_TG", request.form.get("tg"))
+        set_env("SUPPORT_FB", request.form.get("fb"))
+        set_env("SUPPORT_MSG", request.form.get("msg"))
+    return redirect("/settings")
+
 @app.route("/add", methods=["POST"])
 def add():
     if not session.get("auth"): return redirect("/")
@@ -285,4 +291,4 @@ PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
 IP=$(hostname -I | awk '{print $1}')
-echo -e "\n✅ Fixed Success! Panel: http://$IP:8080"
+echo -e "\n✅ Installation Success! Web Panel: http://$IP:8080"
