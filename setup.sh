@@ -1,30 +1,43 @@
+.. ...:
 #!/bin/bash
-# CMT ZIVPN PRO - ORIGINAL DESIGN VERSION
+# CMT ZIVPN PRO - ULTIMATE SOCIAL FIXED VERSION
+set -euo pipefail
+apt-get update -y && apt-get install -y curl ufw jq python3 python3-flask conntrack iptables openssl >/dev/null
 
-# 1. Install Dependencies
-apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack iptables openssl python3-pip wget >/dev/null
-
-# 2. Setup Directories
 mkdir -p /etc/zivpn
+BIN="/usr/local/bin/zivpn"; CFG="/etc/zivpn/config.json"; USERS="/etc/zivpn/users.json"; ENVF="/etc/zivpn/web.env"
 
-# 3. Create Web Script (ZiVPN Original Design)
-cat > /etc/zivpn/web.py <<'PY'
+# Admin Credentials
+echo "WEB_ADMIN_USER=admin" > "$ENVF"
+echo "WEB_ADMIN_PASSWORD=admin" >> "$ENVF"
+echo "WEB_SECRET=$(openssl rand -hex 16)" >> "$ENVF"
+
+# Networking Setup
+sysctl -w net.ipv4.ip_forward=1 >/dev/null
+iptables -t nat -A PREROUTING -p udp --dport 6000:19999 -j DNAT --to-destination :5667 2>/dev/null || true
+iptables -t nat -A POSTROUTING -j MASQUERADE 2>/dev/null || true
+
+# Python Script
+cat > /etc/zivpn/web.py <<PY
 import os, json, subprocess, hmac, datetime
-from flask import Flask, render_template_string, request, redirect, session
+from flask import Flask, render_template_string, request, redirect, session, url_for
 
 app = Flask(__name__)
-app.secret_key = "CMT_SECRET"
-ADMIN_USER = "admin"
-ADMIN_PASS = "admin"
+app.secret_key = os.environ.get("WEB_SECRET")
+ADMIN_USER = os.environ.get("WEB_ADMIN_USER")
+ADMIN_PASS = os.environ.get("WEB_ADMIN_PASSWORD")
 
-RATE_FILE = "/etc/zivpn/today_rate.json"
-if not os.path.exists(RATE_FILE):
-    with open(RATE_FILE, "w") as f: json.dump({"rate": 810}, f)
+OFFICIAL_LOGO = "https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png"
 
-def get_rate():
+def get_usage(port):
+    if not port: return "0.0 MB"
     try:
-        with open(RATE_FILE, "r") as f: return json.load(f)["rate"]
-    except: return 810
+        subprocess.run(f"iptables -L ZIVPN_TRAFFIC -n | grep -q 'dpt:{port}' || iptables -A ZIVPN_TRAFFIC -p udp --dport {port} -j RETURN", shell=True)
+        out = subprocess.run(f"iptables -L ZIVPN_TRAFFIC -n -v -x | grep 'dpt:{port}'", shell=True, capture_output=True, text=True).stdout
+        bytes_total = sum(int(line.split()[1]) for line in out.strip().split('\\n') if line)
+        if bytes_total > 1024**3: return f"{round(bytes_total/1024**3, 2)} GB"
+        return f"{round(bytes_total/1024**2, 2)} MB"
+    except: return "0.0 MB"
 
 def get_uptime():
     try:
@@ -34,131 +47,217 @@ def get_uptime():
     except: return "0:00:00"
 
 HTML = """<!doctype html>
-<html lang="my">
+<html lang="my" translate="no">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>CMT ZIVPN PRO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --bg: #050810; --card: rgba(16, 22, 42, 0.9); --cyan: #00d4ff; --glow: #ff4500; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
+        :root { --bg: #050810; --card: rgba(16, 22, 42, 0.85); --glow: #ff4500; --cyan: #00d4ff; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
         body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
-        
-        /* ✅ Original Header Style (As in 13058.jpg) */
-        .header { background: rgba(0,0,0,0.6); padding: 12px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); }
-        .header img { border-radius: 50%; width: 42px; height: 42px; border: 2px solid #fff; background: #fff; }
-        .header b { font-size: 0.9em; letter-spacing: 1px; color: var(--cyan); }
-        
-        .container { padding: 15px; max-width: 500px; margin: auto; }
-        .grid-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        .grid-box { background: var(--card); border: 1.2px solid var(--cyan); border-radius: 12px; padding: 10px; text-align: center; box-shadow: 0 0 10px rgba(0, 212, 255, 0.15); }
-        .grid-val { font-size: 0.95em; font-weight: bold; color: var(--cyan); }
-        .grid-label { font-size: 0.6em; color: #888; text-transform: uppercase; margin-top: 4px; }
+        #bgCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050810; }
 
-        /* ✅ Main Card Design (Long Single Card) */
-        .main-card { background: var(--card); border: 1.5px solid var(--cyan); border-radius: 20px; padding: 20px; box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
-        .sub-title { font-size: 0.95em; font-weight: bold; color: var(--cyan); margin: 20px 0 15px; border-bottom: 1px solid #1e293b; padding-bottom: 10px; }
-        
-        input, select { width: 100%; padding: 12px; margin: 6px 0; background: rgba(0,0,0,0.7); border: 1px solid #1e293b; color: #fff; border-radius: 10px; box-sizing: border-box; outline: none; }
-        .btn { background: linear-gradient(45deg, #00c6ff, #0072ff); color: #fff; border: none; padding: 14px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
-        
-        /* Interactive Calendar */
-        .date-input::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; transform: scale(1.3); }
+        @keyframes rainbowText {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .rainbow-text {
+            font-weight: bold;
+            background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #9b59b6, #ff0000);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbowText 5s linear infinite;
+        }
 
-        /* Social Icons */
-        .social-row { display: flex; gap: 10px; }
-        .social-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1em; color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,0.2); }
+        .title-container { text-align: center; padding: 25px 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); border-bottom: 2px solid var(--cyan); }
+        .main-title { font-size: 2.2em; letter-spacing: 2px; }
+
+        .header { background: rgba(0,0,0,0.5); padding: 15px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(10px); }
+        .header img { border-radius: 50%; border: 2px solid #fff; width: 45px; height: 45px; background: #fff; }
+        
+        .social-row { display: flex; gap: 12px; }
+        .btn-social { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; text-decoration: none; font-size: 1.3em; transition: 0.3s; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+
+.btn-tg { background: #0088cc; }
+        .btn-fb { background: #1877f2; }
+        .btn-msg { background: linear-gradient(45deg, #00c6ff, #0072ff, #bc00ff); }
+        .btn-social:hover { transform: scale(1.2); box-shadow: 0 0 15px white; }
+
+        .container { padding: 15px; }
+        .grid-menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .grid-box { background: var(--card); border: 2.5px solid var(--glow); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 0 15px rgba(255, 69, 0, 0.4); backdrop-filter: blur(5px); }
+        .grid-box.full { grid-column: span 2; border-color: var(--purple); }
+        .grid-val { font-size: 1.4em; font-weight: bold; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); }
+        .grid-label { font-size: 0.7em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+
+        .card { background: var(--card); padding: 25px; border-radius: 20px; border: 2.5px solid var(--glow); margin-bottom: 20px; box-shadow: 0 0 25px rgba(255, 69, 0, 0.5); }
+        input { width: 100%; padding: 14px; margin: 8px 0; background: rgba(0,0,0,0.7); border: 1.5px solid #444; color: #fff !important; border-radius: 12px; box-sizing: border-box; }
+        .btn { background: linear-gradient(45deg, #ff4500, #ffaa00); color: #fff; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; }
+        
+        .table-card { background: var(--card); border-radius: 15px; border: 2.5px solid var(--cyan); padding: 12px; overflow-x: auto; box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
+        table { width: 100%; border-collapse: collapse; min-width: 550px; }
+        th { text-align: left; padding: 12px; color: var(--cyan); font-size: 0.85em; border-bottom: 2px solid #1e293b; }
+        td { padding: 15px 12px; border-bottom: 1px solid #1e293b; font-size: 0.95em; }
+
+        .copy-btn { color: var(--cyan); cursor: pointer; margin-left: 8px; transition: 0.2s; }
+        .copy-btn:active { transform: scale(1.4); }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10, 14, 26, 0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--cyan); }
+        .nav-item { color: #555; font-size: 1.8em; }
+        .nav-item.active { color: var(--cyan); text-shadow: 0 0 10px var(--cyan); }
     </style>
 </head>
 <body>
+<canvas id="bgCanvas"></canvas>
+
+{% if not session.get('auth') %}
+    <div style="max-width: 330px; margin: 18vh auto; background: var(--card); padding: 40px; border-radius: 30px; text-align: center; border: 3px solid var(--glow); box-shadow: 0 0 50px rgba(255, 69, 0, 0.7);">
+        <img src="{{ logo }}" width="85" style="background:#fff; border-radius:20px; margin-bottom:25px; box-shadow: 0 0 15px #fff;">
+        <h2 class="rainbow-text" style="font-size: 2em;">CMT LOGIN</h2>
+        <form method="post" action="/login_check"><input name="u" placeholder="Admin" required><input name="p" type="password" placeholder="Pass" required><button class="btn" style="margin-top:20px; width:100%;">LOGIN</button></form>
+    </div>
+{% else %}
+    <div class="title-container">
+        <h1 class="main-title rainbow-text">CMT ZIVPN PRO</h1>
+    </div>
+
     <div class="header">
-        <div style="display:flex;align-items:center;gap:10px;"><img src="https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png"><b>CMT ZIVPN PRO</b></div>
+        <div style="display:flex;align-items:center;gap:12px;"><img src="{{ logo }}"><b>DASHBOARD</b></div>
         <div class="social-row">
-            <a href="https://t.me/CMT_1411" class="social-btn" style="background:#0088cc;"><i class="fab fa-telegram-plane"></i></a>
-            <a href="https://m.me/ChitMinThu1239" class="social-btn" style="background:#0072ff;"><i class="fab fa-facebook-messenger"></i></a>
+            <a href="https://t.me/CMT_1411" class="btn-social btn-tg" target="_blank"><i class="fab fa-telegram-plane"></i></a>
+            <a href="https://www.facebook.com/ChitMinThu1239" class="btn-social btn-fb" target="_blank"><i class="fab fa-facebook-f"></i></a>
+            <a href="https://m.me/ChitMinThu1239" class="btn-social btn-msg" target="_blank"><i class="fab fa-facebook-messenger"></i></a>
         </div>
     </div>
 
-    <div class="container">
+<div class="container">
+        <div style="text-align:center; margin-bottom:15px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 12px;"><small>SERVER IP: <span id="sip">{{ ip }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('sip')"></i></small></div>
+        
         <div class="grid-menu">
-            <div class="grid-box"><div class="grid-val">0.3%</div><div class="grid-label">CPU</div></div>
-            <div class="grid-box"><div class="grid-val">12%</div><div class="grid-label">RAM</div></div>
-            <div class="grid-box"><div class="grid-val">9.0%</div><div class="grid-label">DISK</div></div>
-            <div class="grid-box"><div class="grid-val">{{ users|length }}</div><div class="grid-label">USERS</div></div>
-            <div class="grid-box"><div class="grid-val">0</div><div class="grid-label">ONLINE</div></div>
-            <div class="grid-box"><div class="grid-val">12%</div><div class="grid-label">LOAD</div></div>
+            <div class="grid-box"><div class="grid-label">Total Users</div><div class="grid-val">{{ users|length }}</div></div>
+            <div class="grid-box" style="border-color:var(--green);"><div class="grid-label">Online</div><div class="grid-val" style="color:var(--green);">{{ active_count }}</div></div>
+            <div class="grid-box full"><div class="grid-label">System Uptime</div><div class="grid-val" style="color:var(--purple); font-size: 1.1em;">{{ uptime }}</div></div>
+            <div class="grid-box" style="border-color:#3498db;"><div class="grid-label">Bandwidth</div><div class="grid-val" style="color:#3498db;">{{ total_usage }}</div></div>
+            <div class="grid-box" style="border-color:#e67e22;"><div class="grid-label">Server Load</div><div class="grid-val" style="color:#e67e22;">12%</div></div>
         </div>
 
-        <div class="main-card">
-            <div class="sub-title"><i class="fas fa-calendar-alt"></i> REMIT & CALENDAR</div>
-            <div style="text-align:center; margin-bottom:15px;">
-                <label style="font-size:0.75em; color:#888;">📅 DATE</label>
-                <input type="date" id="cDate" class="date-input" onclick="this.showPicker()" style="text-align:center; border-color:var(--cyan);">
-            </div>
-            
-            <div style="background:rgba(0,212,255,0.05); padding:10px; border-radius:10px; border:1px dashed var(--cyan); margin-bottom:15px; text-align:center;">
-                <form method="POST" action="/set_rate">
-                    <small>၁ သိန်း = </small>
-                    <input type="number" name="rate" value="{{ rate }}" style="width:65px; display:inline; padding:5px; border-color:var(--cyan);">
-                    <button style="background:var(--cyan); border:none; border-radius:5px; padding:5px 12px; font-weight:bold; color:black; cursor:pointer;">OK</button>
-                </form>
-            </div>
+        <div class="card">
+            <form method="post" action="/add"><input name="user" placeholder="Name" required><input name="password" placeholder="Pass" required><input name="days" placeholder="Days" required><button class="btn">CREATE USER</button></form>
+        </div>
 
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                <div><label style="font-size:0.7em; color:#aaa;">MMK</label><input type="number" id="mmk" oninput="m2t()" placeholder="0"></div>
-                <div><label style="font-size:0.7em; color:#aaa;">THB</label><input type="number" id="thb" oninput="t2m()" placeholder="0"></div>
-            </div>
-
-            <div class="sub-title"><i class="fas fa-user-plus"></i> CREATE ACCOUNT</div>
-            <form method="post" action="/add">
-                <input name="user" placeholder="Username" required>
-                <input name="password" placeholder="Password" required>
-                <input name="days" placeholder="Days" required>
-                <button class="btn" style="background:linear-gradient(45deg, #ff4500, #ffaa00);">CREATE USER</button>
-            </form>
+        <div class="table-card">
+            <table>
+                <thead><tr><th>USER</th><th>PASS</th><th>USAGE</th><th>EXPIRY</th><th>STATUS</th></tr></thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td style="color:var(--cyan); font-weight:bold;">{{ u.user }}</td>
+                        <td><span id="pw{{loop.index}}">{{ u.password }}</span> <i class="fas fa-copy copy-btn" onclick="copyText('pw{{loop.index}}')"></i></td>
+                        <td style="color:var(--yellow); font-weight:bold;">{{ u.usage }}</td>
+                        <td style="color:#ff69b4;">{{ u.expires }}</td>
+                        <td><i class="fas fa-circle" style="color:{{ 'var(--green)' if u.online else 'var(--glow)' }};"></i> {{ 'Online' if u.online else 'Offline' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <script>
-        document.getElementById('cDate').valueAsDate = new Date();
-        let rate = {{ rate }};
-        function m2t() { let m = document.getElementById('mmk').value; if(m) document.getElementById('thb').value = Math.round((m/100000)*rate); }
-        function t2m() { let t = document.getElementById('thb').value; if(t) document.getElementById('mmk').value = Math.round((t/rate)*100000); }
-    </script>
-</body>
-</html>"""
+    <div class="bottom-nav">
+        <a href="/" class="nav-item active"><i class="fas fa-home"></i></a>
+        <a href="/logout" class="nav-item"><i class="fas fa-power-off"></i></a>
+    </div>
+{% endif %}
+
+<script>
+    function copyText(id) {
+        var text = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(text);
+        alert("Copied: " + text);
+    }
+
+    /* ✅ Advanced Network Lines Script */
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let pts = [];
+    function init() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.onresize = init; init();
+
+    class Pt {
+        constructor() {
+            this.x = Math.random()*canvas.width;
+            this.y = Math.random()*canvas.height;
+            this.vx = (Math.random()-0.5)*1.2; 
+            this.vy = (Math.random()-0.5)*1.2;
+            this.radius = Math.random()*2.8 + 1; 
+        }
+        up() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>canvas.width)this.vx*=-1; if(this.y<0||this.y>canvas.height)this.vy*=-1; }
+        dr() { ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fillStyle='rgba(0,212,255,0.6)'; ctx.fill(); }
+    }
+    for(let i=0;i<75;i++) pts.push(new Pt()); 
+    function anim() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+
+pts.forEach((p,i)=>{
+            p.up(); p.dr();
+            for(let j=i+1;j<pts.length;j++){
+                let d = Math.hypot(p.x-pts[j].x, p.y-pts[j].y);
+                if(d<130){ 
+                    ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pts[j].x,pts[j].y);
+                    ctx.strokeStyle='rgba(255,69,0,'+(1-d/130)+')'; 
+                    ctx.lineWidth=1.0; ctx.stroke(); 
+                }
+            }
+        });
+        requestAnimationFrame(anim);
+    }
+    anim();
+</script>
+</body></html>"""
 
 @app.route("/")
 def index():
+    if not session.get("auth"): return render_template_string(HTML, logo=OFFICIAL_LOGO)
     users = []
     if os.path.exists("/etc/zivpn/users.json"):
         with open("/etc/zivpn/users.json","r") as f: users = json.load(f)
-    return render_template_string(HTML, uptime=get_uptime(), rate=get_rate(), users=users)
+    conntrack = subprocess.run("conntrack -L -p udp 2>/dev/null", shell=True, capture_output=True, text=True).stdout
+    active_count = 0
+    for u in users:
+        u["usage"] = get_usage(u.get("port"))
+        u["online"] = f"dport={u.get('port')}" in conntrack if u.get("port") else False
+        if u["online"]: active_count += 1
+    ip = subprocess.run("curl -s icanhazip.com", shell=True, capture_output=True, text=True).stdout.strip()
+    return render_template_string(HTML, logo=OFFICIAL_LOGO, users=users, active_count=active_count, ip=ip, uptime=get_uptime(), total_usage="0.00")
 
-@app.route("/set_rate", methods=["POST"])
-def set_rate_route():
-    with open(RATE_FILE, "w") as f: json.dump({"rate": int(request.form.get("rate"))}, f)
+@app.route("/login_check", methods=["POST"])
+def login_check():
+    if hmac.compare_digest(request.form.get("u"), ADMIN_USER) and hmac.compare_digest(request.form.get("p"), ADMIN_PASS):
+        session["auth"] = True
     return redirect("/")
 
 @app.route("/add", methods=["POST"])
 def add():
+    if not session.get("auth"): return redirect("/")
+    u, p, d = request.form.get("user"), request.form.get("password"), request.form.get("days")
+    exp = (datetime.datetime.now() + datetime.timedelta(days=int(d))).strftime("%Y-%m-%d") if d.isdigit() else d
+    with open("/etc/zivpn/users.json","r") as f: users = json.load(f)
+    port = str(max([int(x.get("port", 6000)) for x in users] + [6000]) + 1)
+    users.insert(0, {"user":u, "password":p, "expires":exp, "port":port})
+    with open("/etc/zivpn/users.json","w") as f: json.dump(users, f, indent=2)
+    with open("/etc/zivpn/config.json","r") as f: cfg = json.load(f)
+    cfg["auth"]["config"] = [x["password"] for x in users]
+    with open("/etc/zivpn/config.json","w") as f: json.dump(cfg, f, indent=2)
+    subprocess.run("systemctl restart zivpn", shell=True)
     return redirect("/")
+
+@app.route("/logout")
+def logout(): session.clear(); return redirect("/")
 
 if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
 PY
 
-# 4. Service Setup
-cat > /etc/systemd/system/zivpn-web.service <<EOF
-[Unit]
-Description=ZiVPN Web Panel
-After=network.target
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 /etc/zivpn/web.py
-Restart=always
-User=root
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload && systemctl enable zivpn-web && systemctl restart zivpn-web
-echo "✅ ORIGINAL DESIGN UPDATED: http://$(hostname -I | awk '{print $1}'):8080"
+systemctl daemon-reload && systemctl restart zivpn-web
+echo -e "\n✅ Final Ultimate Update! (Social Links Fixed) http://$(hostname -I | awk '{print $1}'):8080"
