@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - FINAL STABLE MASTER (MULTI-LOGIN FIX & SECURITY)
+# CMT ZIVPN PRO - STRICT LIMIT & SECURITY EDITION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack iptables openssl python3-pip >/dev/null
 pip3 install psutil requests >/dev/null
@@ -7,13 +7,15 @@ pip3 install psutil requests >/dev/null
 mkdir -p /etc/zivpn
 ENVF="/etc/zivpn/web.env"
 
-# Setup Initial Environment
 if [ ! -f "$ENVF" ]; then
     echo "WEB_ADMIN_USER=admin" > "$ENVF"
     echo "WEB_ADMIN_PASSWORD=admin" >> "$ENVF"
     echo "WEB_SECRET=$(openssl rand -hex 16)" >> "$ENVF"
     echo "TG_TOKEN=" >> "$ENVF"
     echo "TG_CHAT_ID=" >> "$ENVF"
+    echo "SUPPORT_TG=https://t.me/CMT_1411" >> "$ENVF"
+    echo "SUPPORT_FB=https://www.facebook.com/ChitMinThu1239" >> "$ENVF"
+    echo "SUPPORT_MSG=https://m.me/ChitMinThu1239" >> "$ENVF"
 fi
 
 cat > /etc/zivpn/web.py <<'PY'
@@ -43,14 +45,22 @@ def set_env(key, value):
             else: f.write(line)
         if not found: f.write(f"{key}={value}\n")
 
-def send_tg(msg):
-    token, chat = get_env("TG_TOKEN"), get_env("TG_CHAT_ID")
-    if token and chat:
-        try: requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat}&text={msg}")
-        except: pass
-
 def get_sys_info():
     return {"cpu": psutil.cpu_percent(), "ram": psutil.virtual_memory().percent, "disk": psutil.disk_usage('/').percent}
+
+# ✅ Multi-Login Limit Logic
+def check_limits():
+    if not os.path.exists("/etc/zivpn/users.json"): return
+    with open("/etc/zivpn/users.json", "r") as f: users = json.load(f)
+    conntrack = subprocess.run("conntrack -L -p udp 2>/dev/null", shell=True, capture_output=True, text=True).stdout
+    for u in users:
+        port = u.get("port")
+        if not port: continue
+        # Count connections for this user's port
+        count = conntrack.count(f"dport={port}")
+        if count > 1: # ❌ Limit: 1 Person Only
+            # Kill excess connections
+            subprocess.run(f"conntrack -D -p udp --reply-port-src {port}", shell=True)
 
 HTML = """<!doctype html>
 <html lang="my"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -67,11 +77,11 @@ HTML = """<!doctype html>
     .clock-center { flex-grow: 1; text-align: center; }
     .container { padding: 15px; }
     .grid-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-    .grid-box { background: var(--card); border: 2px solid var(--cyan); border-radius: 12px; padding: 10px; text-align: center; box-shadow: 0 0 10px var(--cyan); }
+    .grid-box { background: var(--card); border: 2px solid var(--cyan); border-radius: 12px; padding: 10px; text-align: center; }
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); }
     .modal-content { background: var(--card); margin: 15% auto; padding: 25px; width: 85%; max-width: 350px; border-radius: 20px; border: 2px solid var(--cyan); }
     input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1.5px solid var(--cyan); border-radius: 10px; box-sizing: border-box; outline: none; }
-    .main-btn { background: linear-gradient(90deg, #ff0000, #ffaa00, #00d4ff); padding: 15px; border: none; border-radius: 12px; color: #fff; width: 100%; font-weight: bold; cursor: pointer; }
+    .main-btn { background: linear-gradient(90deg, #ff0000, #ffaa00, #00d4ff); padding: 12px; border: none; border-radius: 12px; color: #fff; width: 100%; font-weight: bold; cursor: pointer; }
     .table-card { background: var(--card); border-radius: 12px; border: 1.5px solid var(--cyan); overflow-x: auto; padding: 10px; }
     table { width: 100%; border-collapse: collapse; min-width: 600px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; font-size: 0.9em; }
@@ -83,7 +93,7 @@ HTML = """<!doctype html>
     <div style="max-width:320px; margin:20vh auto; background:var(--card); padding:35px; border-radius:20px; text-align:center; border:3px solid var(--glow);">
         <img src="{{logo}}" width="80" style="background:#fff; border-radius:15px; margin-bottom:20px;">
         <h2 class="rainbow-text">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin"><input name="p" type="password" placeholder="Pass"><button class="main-btn">ဝင်မည်</button></form>
+        <form method="post" action="/login_check"><input name="u" placeholder="Admin"><input name="p" type="password" placeholder="Pass"><button class="main-btn">LOGIN</button></form>
     </div>
 {% else %}
     <div class="header">
@@ -92,30 +102,16 @@ HTML = """<!doctype html>
         <a href="/settings" style="color:var(--cyan);font-size:1.5em;"><i class="fas fa-cog"></i></a>
     </div>
     <div class="container">
-        <h2 class="rainbow-text" style="text-align:center; margin-bottom:15px;">CMT ZIVPN PRO</h2>
+        <h2 class="rainbow-text" style="text-align:center; margin-bottom:15px;">CMT PRO PANEL</h2>
         <div class="grid-menu">
             <div class="grid-box"><small>CPU</small><div style="color:var(--cyan)">{{sys.cpu}}%</div></div>
             <div class="grid-box"><small>RAM</small><div style="color:var(--yellow)">{{sys.ram}}%</div></div>
             <div class="grid-box"><small>DISK</small><div style="color:var(--green)">{{sys.disk}}%</div></div>
         </div>
 
-        <div style="text-align:center; margin-bottom:20px;">
-            <button class="main-btn" onclick="toggleModal('addModal')" style="width:220px; background:var(--green);">
-                <i class="fas fa-user-plus"></i> အကောင့်သစ်ဖွင့်ရန်
-            </button>
-        </div>
-
-        <div id="addModal" class="modal">
-            <div class="modal-content">
-                <h3 class="rainbow-text">အကောင့်သစ်ဆောက်ပါ</h3>
-                <form method="post" action="/add">
-                    <input name="user" placeholder="အမည် (မြန်မာလိုရသည်)" required>
-                    <input name="password" placeholder="စကားဝှက်" required>
-                    <input name="days" placeholder="ရက်ပေါင်း (ဥပမာ- ၃၀)" required>
-                    <button class="main-btn">ဆောက်မည်</button>
-                </form>
-                <button onclick="toggleModal('addModal')" style="background:none;border:none;color:#aaa;width:100%;margin-top:10px;cursor:pointer;">ပိတ်မည်</button>
-            </div>
+        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
+            <button class="main-btn" onclick="toggleModal('addModal')" style="width:160px; background:var(--green);"><i class="fas fa-user-plus"></i> အကောင့်သစ်</button>
+            <button class="main-btn" onclick="toggleModal('supportModal')" style="width:160px; background:var(--purple);"><i class="fas fa-headset"></i> ဆက်သွယ်ရန်</button>
         </div>
 
         <div class="table-card">
@@ -129,8 +125,8 @@ HTML = """<!doctype html>
                         <td style="color:#ff69b4">{{u.expires}}</td>
                         <td><span style="color:{{ 'var(--green)' if u.online else '#ff4444' }}">● {{ 'Online' if u.online else 'Offline' }}</span></td>
                         <td>
-                            <div style="display:flex;gap:12px;">
-                                <form method="post" action="/renew"><input type="hidden" name="user" value="{{u.user}}"><button style="background:none;border:none;color:var(--yellow);cursor:pointer;"><i class="fas fa-pencil-alt"></i></button></form>
+                            <div style="display:flex;gap:15px;">
+                                <i class="fas fa-pencil-alt" style="color:var(--yellow);cursor:pointer;" onclick="openRenew('{{u.user}}')"></i>
                                 <form method="post" action="/delete" onsubmit="return confirm('ဖျက်မှာလား?')"><input type="hidden" name="user" value="{{u.user}}"><button style="background:none;border:none;color:#ff4444;cursor:pointer;"><i class="fas fa-trash"></i></button></form>
                             </div>
                         </td>
@@ -140,15 +136,33 @@ HTML = """<!doctype html>
             </table>
         </div>
     </div>
-    <div class="bottom-nav">
-        <a href="/" style="color:var(--cyan);font-size:1.8em;"><i class="fas fa-home"></i></a>
-        <a href="/logout" style="color:#ff4444;font-size:1.8em;"><i class="fas fa-power-off"></i></a>
-    </div>
+
+    <div id="addModal" class="modal"><div class="modal-content">
+        <h3 class="rainbow-text">အကောင့်သစ်ဖွင့်ရန်</h3>
+        <form method="post" action="/add"><input name="user" placeholder="အမည်" required><input name="password" placeholder="စကားဝှက်" required><input name="days" placeholder="ရက်ပေါင်း" required><button class="main-btn">ဆောက်မည်</button></form>
+        <button onclick="toggleModal('addModal')" style="background:none;border:none;color:#aaa;margin-top:10px;">ပိတ်မည်</button>
+    </div></div>
+
+    <div id="renewModal" class="modal"><div class="modal-content">
+        <h3 class="rainbow-text">သက်တမ်းတိုးရန်</h3>
+        <form method="post" action="/renew"><input type="hidden" name="user" id="renewUser"><input name="days" placeholder="ထပ်တိုးမည့်ရက်" required><button class="main-btn">တိုးမည်</button></form>
+        <button onclick="toggleModal('renewModal')" style="background:none;border:none;color:#aaa;margin-top:10px;">ပိတ်မည်</button>
+    </div></div>
+
+    <div id="supportModal" class="modal"><div class="modal-content">
+        <h3 class="rainbow-text">ဆက်သွယ်ရန်</h3>
+        <a href="{{tg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#0088cc;color:#fff;border-radius:10px;text-decoration:none;">Telegram</a>
+        <a href="{{fb}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#1877f2;color:#fff;border-radius:10px;text-decoration:none;">Facebook</a>
+        <button onclick="toggleModal('supportModal')" style="background:none;border:none;color:#aaa;margin-top:10px;">ပိတ်မည်</button>
+    </div></div>
+
+    <div class="bottom-nav"><a href="/" style="color:var(--cyan);font-size:1.8em;"><i class="fas fa-home"></i></a><a href="/logout" style="color:#ff4444;font-size:1.8em;"><i class="fas fa-power-off"></i></a></div>
 {% endif %}
 <script>
     function toggleModal(id) { var m = document.getElementById(id); m.style.display = m.style.display == 'block' ? 'none' : 'block'; }
+    function openRenew(u) { document.getElementById('renewUser').value = u; toggleModal('renewModal'); }
     function copyVal(v){ var t=document.createElement("textarea");document.body.appendChild(t);t.value=v;t.select();document.execCommand("copy");document.body.removeChild(t);alert("Copied!"); }
-    function startClock(){ setInterval(function(){ var n=new Date(); var utc=n.getTime()+(n.getTimezoneOffset()*60000); var th=new Date(utc+25200000); var h=th.getHours(),m=th.getMinutes(),s=th.getSeconds(),ap=h>=12?'PM':'AM'; h=h%12||12; h=h<10?'0'+h:h; m=m<10?'0'+m:m; s=s<10?'0'+s:s; document.getElementById('liveTime').innerHTML=h+':'+m+':'+s+' '+ap; document.getElementById('liveDate').innerHTML=th.toDateString(); }, 1000); }
+    function startClock(){ setInterval(function(){ var n=new Date(); var utc = n.getTime()+(n.getTimezoneOffset()*60000); var th=new Date(utc+25200000); var h=th.getHours(),m=th.getMinutes(),s=th.getSeconds(),ap=h>=12?'PM':'AM'; h=h%12||12; h=h<10?'0'+h:h; m=m<10?'0'+m:m; s=s<10?'0'+s:s; document.getElementById('liveTime').innerHTML=h+':'+m+':'+s+' '+ap; document.getElementById('liveDate').innerHTML=th.toDateString(); }, 1000); }
     const cvs=document.getElementById('bgCanvas'),ctx=cvs.getContext('2d');
     let pts=[],hue=0; function init(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;} window.onresize=init; init();
     class Pt{constructor(){this.x=Math.random()*cvs.width;this.y=Math.random()*cvs.height;this.vx=(Math.random()-0.5);this.vy=(Math.random()-0.5);this.r=Math.random()*2+1;} up(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>cvs.width)this.vx*=-1;if(this.y<0||this.y>cvs.height)this.vy*=-1;} dr(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fill();}}
@@ -160,8 +174,8 @@ SETTINGS_HTML = """<!doctype html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
     body { background: #050810; color: #fff; font-family: sans-serif; padding: 20px; }
-    .card { background: rgba(16, 22, 42, 0.9); padding: 15px; border-radius: 12px; border: 2px solid #00d4ff; margin-bottom: 20px; }
-    input { width: 100%; padding: 12px; margin: 8px 0; background: #000; color: #fff; border: 1.5px solid #ff4500; border-radius: 10px; box-sizing: border-box; }
+    .card { background: rgba(16, 22, 42, 0.9); padding: 15px; border-radius: 12px; border: 1.5px solid #00d4ff; margin-bottom: 20px; }
+    input { width: 100%; padding: 12px; margin: 8px 0; background: #000; color: #fff; border: 1px solid #ff4500; border-radius: 10px; box-sizing: border-box; }
     .btn { background: #00d4ff; padding: 12px; border: none; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; color: #000; }
 </style>
 </head><body>
@@ -169,7 +183,7 @@ SETTINGS_HTML = """<!doctype html>
     <div class="card">
         <h4>Admin Security Update</h4>
         <form method="post" action="/update_pass">
-            <input name="old_u" placeholder="Admin အမည်အဟောင်း">
+            <input name="old_u" placeholder="Admin အမည်ဟောင်း">
             <input name="old_p" type="password" placeholder="စကားဝှက်အဟောင်း">
             <input name="new_p" type="password" placeholder="စကားဝှက်အသစ်">
             <button class="btn">Update Admin</button>
@@ -188,6 +202,7 @@ SETTINGS_HTML = """<!doctype html>
 
 @app.route("/")
 def index():
+    check_limits() # ✅ Runs Multi-login check
     if not session.get("auth"): return render_template_string(HTML, logo=OFFICIAL_LOGO)
     u_list = []
     if os.path.exists("/etc/zivpn/users.json"):
@@ -195,7 +210,7 @@ def index():
     conntrack = subprocess.run("conntrack -L -p udp 2>/dev/null", shell=True, capture_output=True, text=True).stdout
     for u in u_list: u["online"] = f"dport={u.get('port')}" in conntrack
     ip = subprocess.run("curl -s icanhazip.com", shell=True, capture_output=True, text=True).stdout.strip()
-    return render_template_string(HTML, users=u_list, active_count=sum(1 for u in u_list if u["online"]), ip=ip, logo=OFFICIAL_LOGO, sys=get_sys_info())
+    return render_template_string(HTML, users=u_list, active_count=sum(1 for u in u_list if u["online"]), ip=ip, logo=OFFICIAL_LOGO, sys=get_sys_info(), tg=get_env("SUPPORT_TG"), fb=get_env("SUPPORT_FB"))
 
 @app.route("/login_check", methods=["POST"])
 def login_check():
@@ -210,16 +225,14 @@ def settings():
 
 @app.route("/update_pass", methods=["POST"])
 def update_pass():
-    if session.get("auth"):
-        if hmac.compare_digest(request.form.get("old_u"), get_env("WEB_ADMIN_USER")) and hmac.compare_digest(request.form.get("old_p"), get_env("WEB_ADMIN_PASSWORD")):
-            set_env("WEB_ADMIN_PASSWORD", request.form.get("new_p"))
+    if session.get("auth") and hmac.compare_digest(request.form.get("old_u"), get_env("WEB_ADMIN_USER")) and hmac.compare_digest(request.form.get("old_p"), get_env("WEB_ADMIN_PASSWORD")):
+        set_env("WEB_ADMIN_PASSWORD", request.form.get("new_p"))
     return redirect("/settings")
 
 @app.route("/update_tg", methods=["POST"])
 def update_tg():
     if session.get("auth"):
-        set_env("TG_TOKEN", request.form.get("token"))
-        set_env("TG_CHAT_ID", request.form.get("chat_id"))
+        set_env("TG_TOKEN", request.form.get("token")); set_env("TG_CHAT_ID", request.form.get("chat_id"))
     return redirect("/settings")
 
 @app.route("/add", methods=["POST"])
@@ -233,19 +246,18 @@ def add():
     port = str(max([int(x.get("port", 6000)) for x in u_list] + [6000]) + 1)
     u_list.insert(0, {"user":u, "password":p, "expires":exp, "port":port})
     with open("/etc/zivpn/users.json","w") as f: json.dump(u_list, f, indent=2, ensure_ascii=False)
-    send_tg(f"✅ User Created: {u}\nPassword: {p}\nExpires: {exp}")
     subprocess.run("systemctl restart zivpn", shell=True)
     return redirect("/")
 
 @app.route("/renew", methods=["POST"])
 def renew():
     if not session.get("auth"): return redirect("/")
-    name = request.form.get("user")
+    name, days = request.form.get("user"), request.form.get("days")
     with open("/etc/zivpn/users.json", "r") as f: users = json.load(f)
     for u in users:
         if u["user"] == name:
             cur_exp = datetime.datetime.strptime(u['expires'], '%Y-%m-%d')
-            u['expires'] = (cur_exp + datetime.timedelta(days=30)).strftime('%Y-%m-%d'); break
+            u['expires'] = (cur_exp + datetime.timedelta(days=int(days))).strftime('%Y-%m-%d'); break
     with open("/etc/zivpn/users.json", "w") as f: json.dump(users, f, indent=2, ensure_ascii=False)
     return redirect("/")
 
@@ -266,4 +278,4 @@ PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
 IP=$(hostname -I | awk '{print $1}')
-echo -e "\n✅ Installation Success! Web Panel: http://$IP:8080"
+echo -e "\n✅ STABLE VERSION WITH LIMITS: http://$IP:8080"
