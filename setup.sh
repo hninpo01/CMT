@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - NEON GRID & DYNAMIC EXPIRY EDITION
+# CMT ZIVPN PRO - SEARCH & COUNTDOWN MASTER VERSION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack iptables openssl python3-pip >/dev/null
 pip3 install psutil requests >/dev/null
@@ -58,34 +58,29 @@ HTML = """<!doctype html>
     #bgCanvas { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background: #050810; }
     @keyframes rb { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
     .rainbow-text { font-weight: bold; background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rb 5s linear infinite; }
-    
-    .header { background: rgba(0,0,0,0.7); padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); backdrop-filter: blur(10px); }
+    .header { background: rgba(0,0,0,0.7); padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); }
     .logo-img { border-radius: 50%; width: 50px; height: 50px; background: #fff; box-shadow: 0 0 10px #fff; border: 2px solid #fff; }
-    .clock-center { flex-grow: 1; text-align: center; }
-    
     .container { padding: 15px; }
-    
-    /* ✅ Neon Style Grid boxes */
     .grid-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-    .info-box { background: var(--card); padding: 12px 5px; text-align: center; border: 2px solid var(--cyan); border-radius: 12px; box-shadow: 0 0 15px var(--cyan); transition: 0.3s; }
-    
-    /* Action Grid Section */
+    .info-box { background: var(--card); padding: 10px; text-align: center; border: 2.5px solid var(--cyan); border-radius: 12px; box-shadow: 0 0 15px var(--cyan); }
     .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-    .action-box { background: var(--card); padding: 15px 5px; border-radius: 12px; border: 2px solid rgba(0, 212, 255, 0.3); text-align: center; cursor: pointer; transition: 0.3s; }
-    .action-box:hover { border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan); transform: translateY(-3px); }
-    .action-box i { font-size: 1.5em; margin-bottom: 8px; display: block; }
-    .action-box span { font-size: 0.75em; font-weight: bold; }
+    .action-box { background: var(--card); padding: 15px 5px; border-radius: 12px; border: 2px solid rgba(0, 212, 255, 0.4); text-align: center; cursor: pointer; }
+    
+    /* ✅ Search Box Style */
+    .search-container { margin-bottom: 15px; position: relative; }
+    .search-input { width: 100%; padding: 12px 15px 12px 40px; background: rgba(0,0,0,0.5); color: #fff; border: 1.5px solid var(--cyan); border-radius: 10px; outline: none; box-sizing: border-box; }
+    .search-icon { position: absolute; left: 15px; top: 14px; color: var(--cyan); }
 
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); }
-    .modal-content { background: var(--card); margin: 20% auto; padding: 25px; width: 85%; max-width: 350px; border-radius: 20px; border: 2px solid var(--cyan); box-shadow: 0 0 20px var(--cyan); text-align: center; }
+    .modal-content { background: var(--card); margin: 15% auto; padding: 25px; width: 85%; max-width: 350px; border-radius: 20px; border: 2px solid var(--cyan); text-align: center; }
     input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1.5px solid var(--cyan); border-radius: 10px; box-sizing: border-box; outline: none; }
-    .main-btn { background: linear-gradient(90deg, #ff0000, #ffaa00, #00d4ff); padding: 12px; border: none; border-radius: 12px; color: #fff; width: 100%; font-weight: bold; cursor: pointer; text-shadow: 1px 1px 5px #000; }
+    .main-btn { background: linear-gradient(90deg, #ff0000, #ffaa00, #00d4ff); padding: 12px; border: none; border-radius: 12px; color: #fff; width: 100%; font-weight: bold; cursor: pointer; }
     
-    .table-card { background: var(--card); border-radius: 12px; border: 2px solid var(--cyan); overflow-x: auto; padding: 10px; box-shadow: 0 0 15px rgba(0,212,255,0.2); }
-    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    .table-card { background: var(--card); border-radius: 12px; border: 1.5px solid var(--cyan); overflow-x: auto; padding: 10px; }
+    table { width: 100%; border-collapse: collapse; min-width: 650px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; font-size: 0.85em; }
-    .status-dot { font-size: 0.8em; margin-right: 4px; }
-    
+    .days-badge { padding: 2px 6px; border-radius: 5px; font-size: 0.8em; font-weight: bold; background: rgba(255,255,255,0.1); }
+
     .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10,14,26,0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--cyan); }
 </style>
 </head><body onload="startClock()">
@@ -94,46 +89,55 @@ HTML = """<!doctype html>
     <div style="max-width:320px; margin:20vh auto; background:var(--card); padding:35px; border-radius:20px; text-align:center; border:3px solid var(--glow);">
         <img src="{{logo}}" width="80" style="background:#fff; border-radius:15px; margin-bottom:20px;">
         <h2 class="rainbow-text">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin"><input name="p" type="password" placeholder="Pass"><button class="main-btn">LOGIN</button></form>
+        <form method="post" action="/login_check"><input name="u" placeholder="Admin"><input name="p" type="password" placeholder="Pass"><button class="main-btn">ဝင်မည်</button></form>
     </div>
 {% else %}
     <div class="header">
-        <img src="{{logo}}" class="logo-img" onerror="this.src='https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png'">
-        <div class="clock-center"><div id="liveTime" class="rainbow-text" style="font-size:1.3em;"></div><div id="liveDate" style="font-size:0.7em;color:#aaa;"></div></div>
-        <div style="width:40px;"></div>
+        <img src="{{logo}}" class="logo-img">
+        <div style="text-align:center;"><div id="liveTime" class="rainbow-text" style="font-size:1.3em;"></div><div id="liveDate" style="font-size:0.7em;color:#aaa;"></div></div>
+        <a href="/settings" style="color:var(--cyan);font-size:1.5em;"><i class="fas fa-cog"></i></a>
     </div>
     <div class="container">
-        <h2 class="rainbow-text" style="text-align:center; margin-bottom:15px; font-size:1.5em;">CMT ZIVPN PRO PANEL</h2>
+        <h2 class="rainbow-text" style="text-align:center; margin-bottom:15px; font-size:1.4em;">CMT ZIVPN PRO</h2>
+        
         <div class="grid-info">
-            <div class="info-box" style="border-color:var(--cyan);"><small>CPU</small><div style="color:var(--cyan); font-weight:bold;">{{sys.cpu}}%</div></div>
-            <div class="info-box" style="border-color:var(--yellow); box-shadow: 0 0 15px var(--yellow);"><small>RAM</small><div style="color:var(--yellow); font-weight:bold;">{{sys.ram}}%</div></div>
-            <div class="info-box" style="border-color:var(--green); box-shadow: 0 0 15px var(--green);"><small>DISK</small><div style="color:var(--green); font-weight:bold;">{{sys.disk}}%</div></div>
+            <div class="info-box" style="border-color:var(--cyan);"><small>CPU</small><div style="color:var(--cyan)">{{sys.cpu}}%</div></div>
+            <div class="info-box" style="border-color:var(--yellow);"><small>RAM</small><div style="color:var(--yellow)">{{sys.ram}}%</div></div>
+            <div class="info-box" style="border-color:var(--green);"><small>DISK</small><div style="color:var(--green)">{{sys.disk}}%</div></div>
         </div>
 
         <div class="grid-info">
-            <div class="info-box" style="border-color:var(--purple); box-shadow: 0 0 15px var(--purple);"><small>အသုံးပြုသူ</small><div style="color:var(--purple); font-weight:bold;">{{users|length}}</div></div>
-            <div class="info-box" style="border-color:var(--green);"><small>အွန်လိုင်း</small><div style="color:var(--green); font-weight:bold;">{{active_count}}</div></div>
-            <div class="info-box" style="border-color:var(--yellow);"><small>ဝန်အား</small><div style="color:var(--yellow); font-weight:bold;">12%</div></div>
+            <div class="info-box" style="border-color:var(--purple);"><small>USERS</small><div style="color:var(--purple)">{{users|length}}</div></div>
+            <div class="info-box" style="border-color:var(--green);"><small>ONLINE</small><div style="color:var(--green)">{{active_count}}</div></div>
+            <div class="info-box" style="border-color:var(--yellow);"><small>LOAD</small><div style="color:var(--yellow)">12%</div></div>
         </div>
 
         <div class="action-grid">
-            <div class="action-box" onclick="toggleModal('addModal')"><i class="fas fa-user-plus" style="color:var(--green);"></i><span>အကောင့်သစ်</span></div>
-            <div class="action-box" onclick="toggleModal('supportModal')"><i class="fas fa-headset" style="color:var(--cyan);"></i><span>ဆက်သွယ်ရန်</span></div>
-            <div class="action-box" onclick="location.href='/settings'"><i class="fas fa-cog" style="color:var(--purple);"></i><span>စက်တင်များ</span></div>
+            <div class="action-box" onclick="toggleModal('addModal')"><i class="fas fa-user-plus" style="color:var(--green);"></i><span style="font-size:0.7em;">အကောင့်သစ်</span></div>
+            <div class="action-box" onclick="toggleModal('supportModal')"><i class="fas fa-headset" style="color:var(--cyan);"></i><span style="font-size:0.7em;">ဆက်သွယ်ရန်</span></div>
+            <div class="action-box" onclick="location.href='/logout'"><i class="fas fa-power-off" style="color:#ff4444;"></i><span style="font-size:0.7em;">ထွက်ရန်</span></div>
+        </div>
+
+        <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="userInput" class="search-input" onkeyup="searchUser()" placeholder="ဝယ်သူအမည်ဖြင့် ရှာဖွေရန်...">
         </div>
 
         <div class="table-card">
-            <table>
-                <thead><tr><th>အမည်</th><th>စကားဝှက်</th><th>သက်တမ်းကုန်</th><th>Status</th><th>Action</th></tr></thead>
+            <table id="userTable">
+                <thead><tr><th>အမည်</th><th>စကားဝှက်</th><th>ကျန်ရှိရက်</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody>
                     {% for u in users %}
                     <tr>
                         <td style="color:var(--cyan); font-weight:bold;">{{u.user}}</td>
                         <td>{{u.password}} <i class="fas fa-copy" style="cursor:pointer;color:var(--cyan);font-size:0.8em;" onclick="copyVal('{{u.password}}')"></i></td>
-                        <td style="color:#ff69b4">{{u.expires}}</td>
-                        <td><span style="color:{{ 'var(--green)' if u.online else '#ff4444' }}"><i class="fas fa-circle status-dot"></i>{{ 'Online' if u.online else 'Offline' }}</span></td>
                         <td>
-                            <div style="display:flex;gap:15px;">
+                            <span style="color:#ff69b4;">{{u.expires}}</span><br>
+                            <span class="days-badge" style="color:{{ 'var(--green)' if u.days_left > 5 else '#ff4444' }}">{{u.days_left}} ရက်ကျန်</span>
+                        </td>
+                        <td><span style="color:{{ 'var(--green)' if u.online else '#ff4444' }}">● {{ 'Online' if u.online else 'Offline' }}</span></td>
+                        <td>
+                            <div style="display:flex;gap:12px;">
                                 <i class="fas fa-pencil-alt" style="color:var(--yellow);cursor:pointer;" onclick="openRenew('{{u.user}}')"></i>
                                 <form method="post" action="/delete" onsubmit="return confirm('ဖျက်မှာလား?')"><input type="hidden" name="user" value="{{u.user}}"><button style="background:none;border:none;color:#ff4444;cursor:pointer;"><i class="fas fa-trash"></i></button></form>
                             </div>
@@ -148,55 +152,51 @@ HTML = """<!doctype html>
     <div id="addModal" class="modal"><div class="modal-content">
         <h3 class="rainbow-text">အကောင့်သစ်ဖွင့်ရန်</h3>
         <form method="post" action="/add"><input name="user" placeholder="အမည်" required><input name="password" placeholder="စကားဝှက်" required><input name="days" placeholder="ရက်ပေါင်း" required><button class="main-btn">ဆောက်မည်</button></form>
-        <button onclick="toggleModal('addModal')" style="background:none;border:none;color:#aaa;margin-top:15px;cursor:pointer;">ပိတ်မည်</button>
+        <button onclick="toggleModal('addModal')" style="background:none;border:none;color:#aaa;margin-top:15px;">ပိတ်မည်</button>
     </div></div>
 
     <div id="supportModal" class="modal"><div class="modal-content">
         <h3 class="rainbow-text">ဆက်သွယ်ရန်</h3>
-        <a href="{{tg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#0088cc;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;"><i class="fab fa-telegram-plane"></i> Telegram</a>
-        <a href="{{fb}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#1877f2;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;"><i class="fab fa-facebook-f"></i> Facebook</a>
-        <a href="{{msg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:linear-gradient(45deg,#00c6ff,#bc00ff);color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;"><i class="fab fa-facebook-messenger"></i> Messenger</a>
-        <button onclick="toggleModal('supportModal')" style="background:none;border:none;color:#aaa;margin-top:10px;cursor:pointer;">ပိတ်မည်</button>
+        <a href="{{tg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#0088cc;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;">Telegram</a>
+        <a href="{{fb}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#1877f2;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;">Facebook</a>
+        <a href="{{msg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:linear-gradient(45deg,#00c6ff,#bc00ff);color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;">Messenger</a>
+        <button onclick="toggleModal('supportModal')" style="background:none;border:none;color:#aaa;margin-top:15px;">ပိတ်မည်</button>
     </div></div>
 
     <div id="renewModal" class="modal"><div class="modal-content">
         <h3 class="rainbow-text">သက်တမ်းပြင်ဆင်ရန်</h3>
-        <p style="font-size:0.7em; color:#aaa;">(ရက်ပေါင်းထည့်ပါ - လျော့ချချင်ရင် ဂဏန်းရှေ့မှာ - ထည့်ပါ)</p>
-        <form method="post" action="/renew">
-            <input type="hidden" name="user" id="renewUser">
-            <input name="days" placeholder="ရက်ပေါင်း (ဥပမာ ၃၀ သို့မဟုတ် -၅)" required>
-            <button class="main-btn">အတည်ပြုသည်</button>
-        </form>
-        <button onclick="toggleModal('renewModal')" style="background:none;border:none;color:#aaa;margin-top:15px;cursor:pointer;">ပိတ်မည်</button>
+        <form method="post" action="/renew"><input type="hidden" name="user" id="renewUser"><input name="days" placeholder="ရက်ပေါင်း (တိုးရန် ၃၀ / လျော့ရန် -၅)" required><button class="main-btn">အတည်ပြုသည်</button></form>
+        <button onclick="toggleModal('renewModal')" style="background:none;border:none;color:#aaa;margin-top:15px;">ပိတ်မည်</button>
     </div></div>
 
-    <div class="bottom-nav">
-        <a href="/" style="color:var(--cyan);font-size:1.8em;"><i class="fas fa-home"></i></a>
-        <a href="/logout" style="color:#ff4444;font-size:1.8em;"><i class="fas fa-power-off"></i></a>
-    </div>
+    <div class="bottom-nav"><a href="/" style="color:var(--cyan);font-size:1.8em;"><i class="fas fa-home"></i></a><a href="/logout" style="color:#ff4444;font-size:1.8em;"><i class="fas fa-power-off"></i></a></div>
 {% endif %}
 <script>
     function toggleModal(id) { var m = document.getElementById(id); m.style.display = m.style.display == 'block' ? 'none' : 'block'; }
     function openRenew(u) { document.getElementById('renewUser').value = u; toggleModal('renewModal'); }
     function copyVal(v){ var t=document.createElement("textarea");document.body.appendChild(t);t.value=v;t.select();document.execCommand("copy");document.body.removeChild(t);alert("Copied!"); }
     
-    function startClock(){ 
-        setInterval(function(){ 
-            var n=new Date(); 
-            var utc = n.getTime()+(n.getTimezoneOffset()*60000); 
-            var th=new Date(utc+25200000); 
-            var h=th.getHours(),m=th.getMinutes(),s=th.getSeconds(),ap=h>=12?'PM':'AM'; 
-            h=h%12||12; h=h<10?'0'+h:h; m=m<10?'0'+m:m; s=s<10?'0'+s:s; 
-            document.getElementById('liveTime').innerHTML=h+':'+m+':'+s+' '+ap; 
-            document.getElementById('liveDate').innerHTML=th.toDateString(); 
-        }, 1000); 
+    function searchUser() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("userInput");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("userTable");
+        tr = table.getElementsByTagName("tr");
+        for (i = 1; i < tr.length; i++) {
+            td = tr[i].getElementsByTagName("td")[0];
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+            }
+        }
     }
 
-    /* ✅ Particle Animation (ကြိုးချောင်းလေးများ) */
+    function startClock(){ setInterval(function(){ var n=new Date(); var utc=n.getTime()+(n.getTimezoneOffset()*60000); var th=new Date(utc+25200000); var h=th.getHours(),m=th.getMinutes(),s=th.getSeconds(),ap=h>=12?'PM':'AM'; h=h%12||12; h=h<10?'0'+h:h; m=m<10?'0'+m:m; s=s<10?'0'+s:s; document.getElementById('liveTime').innerHTML=h+':'+m+':'+s+' '+ap; document.getElementById('liveDate').innerHTML=th.toDateString(); }, 1000); }
+    
     const cvs=document.getElementById('bgCanvas'),ctx=cvs.getContext('2d');
     let pts=[],hue=0; function init(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;} window.onresize=init; init();
     class Pt{constructor(){this.x=Math.random()*cvs.width;this.y=Math.random()*cvs.height;this.vx=(Math.random()-0.5)*0.8;this.vy=(Math.random()-0.5)*0.8;this.r=Math.random()*2+1;} up(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>cvs.width)this.vx*=-1;if(this.y<0||this.y>cvs.height)this.vy*=-1;} dr(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fill();}}
-    for(let i=0;i<70;i++)pts.push(new Pt());
+    for(let i=0;i<65;i++)pts.push(new Pt());
     function anim(){ctx.clearRect(0,0,cvs.width,cvs.height);hue+=0.5;pts.forEach((p,i)=>{p.up();p.dr();for(let j=i+1;j<pts.length;j++){let d=Math.hypot(p.x-pts[j].x,p.y-pts[j].y);if(d<110){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle='hsla('+(hue+d)+',70%,60%,'+(1-d/110)*0.8+')';ctx.lineWidth=0.8;ctx.stroke();}}});requestAnimationFrame(anim);} anim();
 </script></body></html>"""
 
@@ -204,7 +204,7 @@ SETTINGS_HTML = """<!doctype html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
     body { background: #050810; color: #fff; font-family: sans-serif; padding: 20px; }
-    .card { background: rgba(16, 22, 42, 0.9); padding: 15px; border-radius: 12px; border: 2px solid #00d4ff; box-shadow: 0 0 10px #00d4ff; margin-bottom: 20px; }
+    .card { background: rgba(16, 22, 42, 0.9); padding: 15px; border-radius: 12px; border: 1.5px solid #00d4ff; margin-bottom: 20px; }
     input { width: 100%; padding: 12px; margin: 8px 0; background: #000; color: #fff; border: 1.5px solid #ff4500; border-radius: 10px; box-sizing: border-box; }
     .btn { background: #00d4ff; padding: 12px; border: none; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; color: #000; }
 </style>
@@ -219,28 +219,22 @@ SETTINGS_HTML = """<!doctype html>
             <button class="btn">Update Admin</button>
         </form>
     </div>
-    <div class="card">
-        <h4>Telegram Bot Connect</h4>
-        <form method="post" action="/update_tg">
-            <input name="token" placeholder="Bot Token" value="{{token}}">
-            <input name="chat_id" placeholder="Chat ID" value="{{chat_id}}">
-            <button class="btn">Save Token</button>
-        </form>
-    </div>
-    <a href="/" style="color:#aaa; text-decoration:none;"><i class="fas fa-arrow-left"></i> Back</a>
+    <a href="/" style="color:#aaa; text-decoration:none;">Back to Home</a>
 </body></html>"""
 
 @app.route("/")
 def index():
-    if not session.get("auth"): return render_template_string(HTML, logo=OFFICIAL_LOGO)
     u_list = []
     if os.path.exists("/etc/zivpn/users.json"):
         with open("/etc/zivpn/users.json","r") as f: u_list = json.load(f)
     conntrack = subprocess.run("conntrack -L -p udp 2>/dev/null", shell=True, capture_output=True, text=True).stdout
-    for u in u_list: u["online"] = f"dport={u.get('port')}" in conntrack
-    active_count = sum(1 for u in u_list if u["online"])
+    today = datetime.datetime.now().date()
+    for u in u_list:
+        u["online"] = f"dport={u.get('port')}" in conntrack
+        exp_date = datetime.datetime.strptime(u['expires'], '%Y-%m-%d').date()
+        u["days_left"] = (exp_date - today).days
     ip = subprocess.run("curl -s icanhazip.com", shell=True, capture_output=True, text=True).stdout.strip()
-    return render_template_string(HTML, users=u_list, active_count=active_count, ip=ip, logo=OFFICIAL_LOGO, sys=get_sys_info(), tg=get_env("SUPPORT_TG"), fb=get_env("SUPPORT_FB"), msg=get_env("SUPPORT_MSG"))
+    return render_template_string(HTML, users=u_list, active_count=sum(1 for u in u_list if u["online"]), ip=ip, logo=OFFICIAL_LOGO, sys=get_sys_info(), tg=get_env("SUPPORT_TG"), fb=get_env("SUPPORT_FB"), msg=get_env("SUPPORT_MSG"))
 
 @app.route("/login_check", methods=["POST"])
 def login_check():
@@ -251,23 +245,17 @@ def login_check():
 @app.route("/settings")
 def settings():
     if not session.get("auth"): return redirect("/")
-    return render_template_string(SETTINGS_HTML, token=get_env("TG_TOKEN"), chat_id=get_env("TG_CHAT_ID"))
+    return render_template_string(SETTINGS_HTML)
 
 @app.route("/update_pass", methods=["POST"])
 def update_pass():
-    if session.get("auth") and hmac.compare_digest(request.form.get("old_u"), get_env("WEB_ADMIN_USER")) and hmac.compare_digest(request.form.get("old_p"), get_env("WEB_ADMIN_PASSWORD")):
-        set_env("WEB_ADMIN_PASSWORD", request.form.get("new_p"))
-    return redirect("/settings")
-
-@app.route("/update_tg", methods=["POST"])
-def update_tg():
     if session.get("auth"):
-        set_env("TG_TOKEN", request.form.get("token")); set_env("TG_CHAT_ID", request.form.get("chat_id"))
+        if hmac.compare_digest(request.form.get("old_u"), get_env("WEB_ADMIN_USER")) and hmac.compare_digest(request.form.get("old_p"), get_env("WEB_ADMIN_PASSWORD")):
+            set_env("WEB_ADMIN_PASSWORD", request.form.get("new_p"))
     return redirect("/settings")
 
 @app.route("/add", methods=["POST"])
 def add():
-    if not session.get("auth"): return redirect("/")
     u, p, d = request.form.get("user"), request.form.get("password"), request.form.get("days")
     exp = (datetime.datetime.now() + datetime.timedelta(days=int(d))).strftime("%Y-%m-%d")
     u_list = []
@@ -281,7 +269,6 @@ def add():
 
 @app.route("/renew", methods=["POST"])
 def renew():
-    if not session.get("auth"): return redirect("/")
     name, days = request.form.get("user"), request.form.get("days")
     with open("/etc/zivpn/users.json", "r") as f: users = json.load(f)
     for u in users:
@@ -293,7 +280,6 @@ def renew():
 
 @app.route("/delete", methods=["POST"])
 def delete():
-    if not session.get("auth"): return redirect("/")
     n = request.form.get("user")
     with open("/etc/zivpn/users.json","r") as f: u_list = json.load(f)
     u_list = [x for x in u_list if x["user"] != n]
@@ -308,4 +294,4 @@ PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
 IP=$(hostname -I | awk '{print $1}')
-echo -e "\n✅ Professional Update Done! Panel: http://$IP:8080"
+echo -e "\n✅ Installation Success! Web Panel: http://$IP:8080"
