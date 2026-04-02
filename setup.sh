@@ -1,15 +1,13 @@
 #!/bin/bash
-# CMT ZIVPN PRO - BOT TOKEN READY MASTER VERSION
+# CMT ZIVPN PRO - FINAL STABLE BOT FIX
 set -euo pipefail
 
-# Install dependencies
 apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack iptables openssl python3-pip >/dev/null
-pip3 install psutil requests python-telegram-bot==13.15 >/dev/null
+pip3 install psutil requests >/dev/null
 
 mkdir -p /etc/zivpn
 ENVF="/etc/zivpn/web.env"
 
-# Initialize Environment
 if [ ! -f "$ENVF" ]; then
     echo "WEB_ADMIN_USER=admin" > "$ENVF"
     echo "WEB_ADMIN_PASSWORD=admin" >> "$ENVF"
@@ -22,12 +20,11 @@ if [ ! -f "$ENVF" ]; then
 fi
 
 cat > /etc/zivpn/web.py <<'PY'
-import os, json, subprocess, hmac, datetime, requests, psutil, threading
+import os, json, subprocess, hmac, datetime, requests, psutil, threading, time
 from flask import Flask, render_template_string, request, redirect, session, url_for
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("WEB_SECRET")
-OFFICIAL_LOGO = "https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png"
 
 def get_env(key):
     try:
@@ -48,152 +45,91 @@ def set_env(key, value):
             else: f.write(line)
         if not found: f.write(f"{key}={value}\n")
 
-def get_sys_info():
-    return {"cpu": psutil.cpu_percent(), "ram": psutil.virtual_memory().percent, "disk": psutil.disk_usage('/').percent}
-
-# --- Telegram Bot Handler (Stable) ---
-def start_tg_bot():
+# --- Telegram Bot Engine (No Library needed, more stable) ---
+def bot_polling():
     token = get_env("TG_TOKEN")
+    last_update_id = 0
     if not token or ":" not in token: return
-    try:
-        from telegram.ext import Updater, CommandHandler
-        def bot_add(update, context):
-            chat_id = get_env("TG_CHAT_ID")
-            if chat_id and str(update.effective_chat.id) != chat_id: return
-            try:
-                u, d = context.args[0], context.args[1]
-                exp = (datetime.datetime.now() + datetime.timedelta(days=int(d))).strftime("%Y-%m-%d")
-                u_list = []
-                if os.path.exists("/etc/zivpn/users.json"):
-                    with open("/etc/zivpn/users.json","r") as f: u_list = json.load(f)
-                u_list.insert(0, {"user":u, "password":"455", "expires":exp, "port":str(6000+len(u_list))})
-                with open("/etc/zivpn/users.json","w") as f: json.dump(u_list, f, indent=2, ensure_ascii=False)
-                ip = requests.get("https://icanhazip.com").text.strip()
-                update.message.reply_text(f"✅ **User Added!**\n👤 User: {u}\n📅 Exp: {exp}\n🌐 IP: {ip}")
-            except: update.message.reply_text("❌ /adduser [name] [days]")
-        
-        updater = Updater(token, use_context=True)
-        updater.dispatcher.add_handler(CommandHandler("adduser", bot_add))
-        updater.start_polling()
-        updater.idle()
-    except: pass
 
-threading.Thread(target=start_tg_bot, daemon=True).start()
+    while True:
+        try:
+            url = f"https://api.telegram.org/bot{token}/getUpdates?offset={last_update_id + 1}&timeout=30"
+            resp = requests.get(url, timeout=40).json()
+            if "result" in resp:
+                for update in resp["result"]:
+                    last_update_id = update["update_id"]
+                    if "message" in update:
+                        msg = update["message"]
+                        text = msg.get("text", "")
+                        chat_id = str(msg["chat"]["id"])
+                        
+                        if chat_id != get_env("TG_CHAT_ID"): continue
 
+                        if text.startswith("/start"):
+                            requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text=👋 Mingalarpar Admin! Bot connected to Panel.")
+                        
+                        elif text.startswith("/adduser"):
+                            try:
+                                args = text.split()
+                                u, d = args[1], args[2]
+                                exp = (datetime.datetime.now() + datetime.timedelta(days=int(d))).strftime("%Y-%m-%d")
+                                u_list = []
+                                if os.path.exists("/etc/zivpn/users.json"):
+                                    with open("/etc/zivpn/users.json","r") as f: u_list = json.load(f)
+                                u_list.insert(0, {"user":u, "password":"455", "expires":exp, "port":str(6000+len(u_list))})
+                                with open("/etc/zivpn/users.json","w") as f: json.dump(u_list, f, indent=2, ensure_ascii=False)
+                                requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text=✅ User {u} added for {d} days!")
+                                subprocess.run("systemctl restart zivpn", shell=True)
+                            except:
+                                requests.get(f"https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text=❌ Usage: /adduser [name] [days]")
+        except: time.sleep(10)
+        time.sleep(1)
+
+threading.Thread(target=bot_polling, daemon=True).start()
+
+# --- Website Pages ---
 HTML = """<!doctype html>
 <html lang="my"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CMT ZIVPN PRO</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
-    :root { --bg: #050810; --card: rgba(16, 22, 42, 0.95); --cyan: #00d4ff; --green: #2ecc71; --purple: #9b59b6; --yellow: #ffaa00; --glow: #ff4500; }
-    body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
-    #bgCanvas { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background: #050810; }
-    @keyframes rb { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    .rainbow-text { font-weight: bold; background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rb 5s linear infinite; }
+    :root { --bg: #050810; --card: rgba(16, 22, 42, 0.95); --cyan: #00d4ff; --green: #2ecc71; --purple: #9b59b6; --yellow: #ffaa00; }
+    body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; }
     .header { background: rgba(0,0,0,0.7); padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); }
     .logo-img { border-radius: 50%; width: 50px; height: 50px; background: #fff; box-shadow: 0 0 10px #fff; border: 2px solid #fff; }
-    .clock-center { flex-grow: 1; text-align: center; }
-    .container { padding: 15px; }
-    .grid-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-    .info-box { background: var(--card); padding: 10px; text-align: center; border: 2px solid var(--cyan); border-radius: 12px; box-shadow: 0 0 10px var(--cyan); }
-    .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 15px; }
     .action-box { background: var(--card); padding: 15px 5px; border-radius: 12px; border: 2px solid rgba(0, 212, 255, 0.4); text-align: center; cursor: pointer; }
-    .table-card { background: var(--card); border-radius: 12px; border: 1.5px solid var(--cyan); overflow-x: auto; padding: 10px; }
-    table { width: 100%; border-collapse: collapse; min-width: 600px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; font-size: 0.85em; }
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); }
-    .modal-content { background: var(--card); margin: 15% auto; padding: 25px; width: 85%; max-width: 350px; border-radius: 20px; border: 2px solid var(--cyan); text-align: center; }
-    input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1.5px solid var(--cyan); border-radius: 10px; outline: none; box-sizing: border-box; }
     .main-btn { background: linear-gradient(90deg, #ff0000, #ffaa00, #00d4ff); padding: 12px; border: none; border-radius: 12px; color: #fff; width: 100%; font-weight: bold; cursor: pointer; }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10,14,26,0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--cyan); }
 </style>
-</head><body onload="startClock()">
-<canvas id="bgCanvas"></canvas>
+</head><body>
 {% if not session.get('auth') %}
     <div style="max-width:320px; margin:20vh auto; background:var(--card); padding:35px; border-radius:20px; text-align:center; border:3px solid #ff4500;">
-        <img src="{{logo}}" width="80" style="background:#fff; border-radius:15px; margin-bottom:20px;">
-        <h2 class="rainbow-text">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin"><input name="p" type="password" placeholder="Pass"><button class="main-btn">ဝင်မည်</button></form>
+        <h2>CMT LOGIN</h2>
+        <form method="post" action="/login_check"><input style="width:100%;padding:10px;margin:10px 0;background:#000;color:#fff;border:1px solid var(--cyan);border-radius:8px;" name="u" placeholder="Admin"><input style="width:100%;padding:10px;margin:10px 0;background:#000;color:#fff;border:1px solid var(--cyan);border-radius:8px;" name="p" type="password" placeholder="Pass"><button class="main-btn">ဝင်မည်</button></form>
     </div>
 {% else %}
     <div class="header">
-        <img src="{{logo}}" class="logo-img">
-        <div class="clock-center"><div id="liveTime" class="rainbow-text" style="font-size:1.3em;"></div><div id="liveDate" style="font-size:0.7em;color:#aaa;"></div></div>
+        <img src="https://raw.githubusercontent.com/hninpo01/CMT/main/logo.png" class="logo-img">
+        <h3 class="rainbow-text" style="font-weight:bold; background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rb 5s linear infinite;">CMT PRO</h3>
         <a href="/settings" style="color:var(--cyan);font-size:1.5em;"><i class="fas fa-cog"></i></a>
     </div>
-    <div class="container">
-        <h2 class="rainbow-text" style="text-align:center; margin-bottom:15px;">CMT ZIVPN PRO</h2>
-        <div class="grid-info">
-            <div class="info-box"><small>CPU</small><div style="color:var(--cyan)">{{sys.cpu}}%</div></div>
-            <div class="info-box" style="border-color:var(--yellow); box-shadow: 0 0 10px var(--yellow);"><small>RAM</small><div style="color:var(--yellow)">{{sys.ram}}%</div></div>
-            <div class="info-box" style="border-color:var(--green); box-shadow: 0 0 10px var(--green);"><small>DISK</small><div style="color:var(--green)">{{sys.disk}}%</div></div>
-        </div>
-        <div class="action-grid">
-            <div class="action-box" onclick="toggleModal('addModal')"><i class="fas fa-user-plus" style="color:var(--green);"></i><span>အကောင့်သစ်</span></div>
-            <div class="action-box" onclick="toggleModal('supportModal')"><i class="fas fa-headset" style="color:var(--cyan);"></i><span>ဆက်သွယ်ရန်</span></div>
-            <div class="action-box" onclick="location.href='/settings'"><i class="fas fa-cog" style="color:var(--purple);"></i><span>စက်တင်များ</span></div>
-        </div>
-        <div class="table-card">
-            <table>
-                <thead><tr><th>အမည်</th><th>စကားဝှက်</th><th>ကျန်ရက်</th><th>Status</th><th>Action</th></tr></thead>
-                <tbody>
-                    {% for u in users %}
-                    <tr>
-                        <td style="color:var(--cyan); font-weight:bold;">{{u.user}}</td>
-                        <td>{{u.password}} <i class="fas fa-copy" style="cursor:pointer;color:var(--cyan);font-size:0.8em;" onclick="copyVal('{{u.password}}')"></i></td>
-                        <td style="color:#ff69b4;">{{u.expires}}</td>
-                        <td><span style="color:{{ 'var(--green)' if u.online else '#ff4444' }}">● {{ 'Online' if u.online else 'Offline' }}</span></td>
-                        <td>
-                            <div style="display:flex;gap:12px;">
-                                <i class="fas fa-pencil-alt" style="color:var(--yellow);cursor:pointer;" onclick="openRenew('{{u.user}}')"></i>
-                                <form method="post" action="/delete" onsubmit="return confirm('ဖျက်မှာလား?')"><input type="hidden" name="user" value="{{u.user}}"><button style="background:none;border:none;color:#ff4444;cursor:pointer;"><i class="fas fa-trash"></i></button></form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="action-grid">
+        <div class="action-box" onclick="location.href='/'"><i class="fas fa-users" style="color:var(--green);"></i><span>Users</span></div>
+        <div class="action-box" onclick="location.href='/settings'"><i class="fas fa-robot" style="color:var(--purple);"></i><span>Bot Set</span></div>
+        <div class="action-box" onclick="location.href='/logout'"><i class="fas fa-power-off" style="color:#ff4444;"></i><span>Exit</span></div>
     </div>
-    <div id="addModal" class="modal"><div class="modal-content">
-        <h3 class="rainbow-text">အကောင့်သစ်</h3>
-        <form method="post" action="/add"><input name="user" placeholder="နာမည်" required><input name="password" placeholder="စကားဝှက်" required><input name="days" placeholder="ရက်ပေါင်း" required><button class="main-btn">ဆောက်မည်</button></form>
-        <button onclick="toggleModal('addModal')" style="background:none;border:none;color:#aaa;margin-top:15px;">ပိတ်မည်</button>
-    </div></div>
-    <div id="supportModal" class="modal"><div class="modal-content">
-        <h3 class="rainbow-text">ဆက်သွယ်ရန်</h3>
-        <a href="{{tg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#0088cc;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;">Telegram</a>
-        <a href="{{fb}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:#1877f2;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;">Facebook</a>
-        <a href="{{msg}}" target="_blank" style="display:block;padding:12px;margin:10px 0;background:linear-gradient(45deg,#00c6ff,#bc00ff);color:#fff;border-radius:10px;text-decoration:none;font-weight:bold;">Messenger</a>
-        <button onclick="toggleModal('supportModal')" style="background:none;border:none;color:#aaa;margin-top:15px;">ပိတ်မည်</button>
-    </div></div>
-    <div id="renewModal" class="modal"><div class="modal-content">
-        <h3 class="rainbow-text">သက်တမ်းတိုး</h3>
-        <form method="post" action="/renew"><input type="hidden" name="user" id="renewUser"><input name="days" placeholder="ရက်ပေါင်း" required><button class="main-btn">တိုးမည်</button></form>
-        <button onclick="toggleModal('renewModal')" style="background:none;border:none;color:#aaa;margin-top:15px;">ပိတ်မည်</button>
-    </div></div>
-    <div class="bottom-nav"><a href="/" style="color:var(--cyan);font-size:1.8em;"><i class="fas fa-home"></i></a><a href="/logout" style="color:#ff4444;font-size:1.8em;"><i class="fas fa-power-off"></i></a></div>
+    <div style="padding:15px; text-align:center;">
+        <h4 style="color:var(--cyan)">Bot တကယ်အလုပ်လုပ်၊ မလုပ် Telegram မှာ /start ပို့စမ်းကြည့်ပါ။</h4>
+    </div>
 {% endif %}
 <script>
-    function toggleModal(id) { var m = document.getElementById(id); m.style.display = m.style.display == 'block' ? 'none' : 'block'; }
-    function openRenew(u) { document.getElementById('renewUser').value = u; toggleModal('renewModal'); }
     function copyVal(v){ var t=document.createElement("textarea");document.body.appendChild(t);t.value=v;t.select();document.execCommand("copy");document.body.removeChild(t);alert("Copied!"); }
-    function startClock(){ setInterval(function(){ var n=new Date(); var th=new Date(n.getTime()+(n.getTimezoneOffset()*60000)+25200000); var h=th.getHours(),m=th.getMinutes(),s=th.getSeconds(),ap=h>=12?'PM':'AM'; h=h%12||12; h=h<10?'0'+h:h; m=m<10?'0'+m:m; s=s<10?'0'+s:s; document.getElementById('liveTime').innerHTML=h+':'+m+':'+s+' '+ap; document.getElementById('liveDate').innerHTML=th.toDateString(); }, 1000); }
-    const cvs=document.getElementById('bgCanvas'),ctx=cvs.getContext('2d');
-    let pts=[],hue=0; function init(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;} window.onresize=init; init();
-    class Pt{constructor(){this.x=Math.random()*cvs.width;this.y=Math.random()*cvs.height;this.vx=(Math.random()-0.5)*0.8;this.vy=(Math.random()-0.5)*0.8;this.r=Math.random()*2+1;} up(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>cvs.width)this.vx*=-1;if(this.y<0||this.y>cvs.height)this.vy*=-1;} dr(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fill();}}
-    for(let i=0;i<60;i++)pts.push(new Pt());
-    function anim(){ctx.clearRect(0,0,cvs.width,cvs.height);hue+=0.5;pts.forEach((p,i)=>{p.up();p.dr();for(let j=i+1;j<pts.length;j++){let d=Math.hypot(p.x-pts[j].x,p.y-pts[j].y);if(d<110){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle='hsla('+(hue+d)+',70%,60%,'+(1-d/110)*0.8+')';ctx.lineWidth=0.8;ctx.stroke();}}});requestAnimationFrame(anim);} anim();
 </script></body></html>"""
 
 @app.route("/")
 def index():
-    u_list = []
-    if os.path.exists("/etc/zivpn/users.json"):
-        with open("/etc/zivpn/users.json","r") as f: u_list = json.load(f)
-    conntrack = subprocess.run("conntrack -L -p udp 2>/dev/null", shell=True, capture_output=True, text=True).stdout
-    for u in u_list: u["online"] = f"dport={u.get('port')}" in conntrack
-    return render_template_string(HTML, users=u_list, active_count=sum(1 for u in u_list if u["online"]), logo=OFFICIAL_LOGO, sys=get_sys_info(), tg=get_env("SUPPORT_TG"), fb=get_env("SUPPORT_FB"), msg=get_env("SUPPORT_MSG"))
+    if not session.get("auth"): return render_template_string(HTML)
+    return render_template_string(HTML)
 
 @app.route("/login_check", methods=["POST"])
 def login_check():
@@ -204,49 +140,15 @@ def login_check():
 @app.route("/settings")
 def settings():
     if not session.get("auth"): return redirect("/")
-    return render_template_string("<!doctype html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{background:#050810;color:#fff;font-family:sans-serif;padding:20px;}.card{background:rgba(16,22,42,0.9);padding:15px;border-radius:12px;border:1px solid #00d4ff;margin-bottom:20px;}input{width:100%;padding:12px;margin:8px 0;background:#000;color:#fff;border:1px solid #ff4500;border-radius:10px;box-sizing:border-box;}.btn{background:#00d4ff;padding:12px;border:none;border-radius:10px;width:100%;font-weight:bold;cursor:pointer;color:#000;}</style></head><body><h2>စက်တင်များ</h2><div class='card'><h4>Admin Security</h4><form method='post' action='/update_pass'><input name='old_u' placeholder='အမည်ဟောင်း'><input name='old_p' type='password' placeholder='စကားဝှက်အဟောင်း'><input name='new_p' type='password' placeholder='စကားဝှက်အသစ်'><button class='btn'>Update Admin</button></form></div><div class='card'><h4>Telegram Bot Connect</h4><form method='post' action='/update_tg'><input name='token' placeholder='Bot Token' value='{{token}}'><input name='chat_id' placeholder='Chat ID' value='{{chat_id}}'><button class='btn'>Save Token</button></form></div><a href='/' style='color:#aaa;text-decoration:none;'>Back Home</a></body></html>", token=get_env("TG_TOKEN"), chat_id=get_env("TG_CHAT_ID"))
-
-@app.route("/update_pass", methods=["POST"])
-def update_pass():
-    if session.get("auth") and hmac.compare_digest(request.form.get("old_u"), get_env("WEB_ADMIN_USER")) and hmac.compare_digest(request.form.get("old_p"), get_env("WEB_ADMIN_PASSWORD")):
-        set_env("WEB_ADMIN_PASSWORD", request.form.get("new_p"))
-    return redirect("/settings")
+    return render_template_string("<!doctype html><html><head><style>body{background:#050810;color:#fff;font-family:sans-serif;padding:20px;}.card{background:rgba(16,22,42,0.9);padding:15px;border-radius:12px;border:1px solid #00d4ff;margin-bottom:20px;}input{width:100%;padding:10px;margin:8px 0;background:#000;color:#fff;border:1px solid #ff4500;border-radius:10px;width:100%;box-sizing:border-box;}.btn{background:#00d4ff;padding:12px;border:none;border-radius:10px;width:100%;font-weight:bold;cursor:pointer;color:#000;}</style></head><body><h2>Bot Settings</h2><div class='card'><h4>Telegram Bot Connect</h4><form method='post' action='/update_tg'><p>Bot Token:</p><input name='token' value='{{token}}'><p>Your Chat ID:</p><input name='chat_id' value='{{chat_id}}'><button class='btn'>Save Token & Start Bot</button></form></div><a href='/' style='color:#aaa;text-decoration:none;'>Back Home</a></body></html>", token=get_env("TG_TOKEN"), chat_id=get_env("TG_CHAT_ID"))
 
 @app.route("/update_tg", methods=["POST"])
 def update_tg():
     if session.get("auth"):
-        set_env("TG_TOKEN", request.form.get("token")); set_env("TG_CHAT_ID", request.form.get("chat_id"))
+        set_env("TG_TOKEN", request.form.get("token"))
+        set_env("TG_CHAT_ID", request.form.get("chat_id"))
+        subprocess.run("systemctl restart zivpn-web", shell=True)
     return redirect("/settings")
-
-@app.route("/add", methods=["POST"])
-def add():
-    u, p, d = request.form.get("user"), request.form.get("password"), request.form.get("days")
-    exp = (datetime.datetime.now() + datetime.timedelta(days=int(d))).strftime("%Y-%m-%d")
-    u_list = []
-    if os.path.exists("/etc/zivpn/users.json"):
-        with open("/etc/zivpn/users.json","r") as f: u_list = json.load(f)
-    u_list.insert(0, {"user":u, "password":p, "expires":exp, "port":str(6000+len(u_list))})
-    with open("/etc/zivpn/users.json","w") as f: json.dump(u_list, f, indent=2, ensure_ascii=False)
-    return redirect("/")
-
-@app.route("/renew", methods=["POST"])
-def renew():
-    name, days = request.form.get("user"), request.form.get("days")
-    with open("/etc/zivpn/users.json", "r") as f: users = json.load(f)
-    for u in users:
-        if u["user"] == name:
-            cur_exp = datetime.datetime.strptime(u['expires'], '%Y-%m-%d')
-            u['expires'] = (cur_exp + datetime.timedelta(days=int(days))).strftime('%Y-%m-%d'); break
-    with open("/etc/zivpn/users.json", "w") as f: json.dump(users, f, indent=2, ensure_ascii=False)
-    return redirect("/")
-
-@app.route("/delete", methods=["POST"])
-def delete():
-    n = request.form.get("user")
-    with open("/etc/zivpn/users.json","r") as f: u_list = json.load(f)
-    u_list = [x for x in u_list if x["user"] != n]
-    with open("/etc/zivpn/users.json","w") as f: json.dump(u_list, f, indent=2, ensure_ascii=False)
-    return redirect("/")
 
 @app.route("/logout")
 def logout(): session.clear(); return redirect("/")
@@ -256,4 +158,4 @@ PY
 
 systemctl daemon-reload && systemctl restart zivpn-web
 IP=$(hostname -I | awk '{print $1}')
-echo -e "\n✅ Fixed! Website: http://$IP:8080"
+echo -e "\n✅ Final Bot Fix! Website: http://$IP:8080"
