@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - ULTIMATE FIX 2026
+# CMT ZIVPN PRO - ULTIMATE STABLE FIX
 
 # 1. Install Dependencies
 apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack iptables openssl python3-pip wget >/dev/null
@@ -7,7 +7,7 @@ apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack 
 # 2. Setup Directories
 mkdir -p /etc/zivpn
 
-# 3. Create Basic Config if not exists
+# 3. Create Basic Config
 if [ ! -f "/etc/zivpn/config.json" ]; then
 cat > /etc/zivpn/config.json <<EOF
 {
@@ -25,8 +25,8 @@ cat > /etc/zivpn/config.json <<EOF
 EOF
 fi
 
-# 4. Create web.py (With Remit + Interactive Calendar)
-cat > /etc/zivpn/web.py <<PY
+# 4. Create web.py (Using a cleaner method to avoid syntax errors)
+cat > /etc/zivpn/web.py <<'PY'
 import os, json, subprocess, hmac, datetime
 from flask import Flask, render_template_string, request, redirect, session
 
@@ -63,48 +63,37 @@ HTML = """<!doctype html>
         .header { background: linear-gradient(135deg, #00c6ff, #0072ff); padding: 20px; text-align: center; border-radius: 0 0 20px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .container { padding: 15px; max-width: 500px; margin: auto; }
         .grid-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .grid-box { background: var(--card); border: 1.5px solid var(--neon); border-radius: 12px; padding: 10px; text-align: center; box-shadow: 0 0 10px rgba(0, 212, 255, 0.2); }
+        .grid-box { background: var(--card); border: 1.5px solid var(--neon); border-radius: 12px; padding: 10px; text-align: center; }
         .main-card { background: var(--card); border: 2px solid var(--neon); border-radius: 25px; padding: 25px; box-shadow: 0 0 20px rgba(0,212,255,0.3); }
         .input-group { background: rgba(0,0,0,0.5); border: 1px solid #1e293b; border-radius: 15px; padding: 12px; margin-bottom: 15px; }
-        .input-group input { width: 100%; border: none; background: transparent; color: white; font-size: 1.1rem; outline: none; }
-        .btn { background: linear-gradient(45deg, #00c6ff, #0072ff); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; font-size: 1rem; }
-        .divider { height: 1px; background: #1e293b; margin: 25px 0; }
+        .input-group input { width: 100%; border: none; background: transparent; color: white; font-size: 1rem; outline: none; }
+        .btn { background: linear-gradient(45deg, #00c6ff, #0072ff); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2 style="margin:0;"><i class="fas fa-satellite-dish"></i> CMT ZIVPN PRO</h2>
-    </div>
+    <div class="header"><h2 style="margin:0;"><i class="fas fa-shield-alt"></i> CMT ZIVPN PRO</h2></div>
     <div class="container">
         <div class="grid-menu">
-            <div class="grid-box"><small style="color:#aaa;">CPU</small><br><b style="color:var(--neon);">0.3%</b></div>
-            <div class="grid-box"><small style="color:#aaa;">RAM</small><br><b style="color:var(--neon);">12%</b></div>
-            <div class="grid-box"><small style="color:#aaa;">UPTIME</small><br><b style="color:var(--neon);">{{ uptime }}</b></div>
+            <div class="grid-box"><small>CPU</small><br><b style="color:var(--neon);">0.3%</b></div>
+            <div class="grid-box"><small>RAM</small><br><b style="color:var(--neon);">12%</b></div>
+            <div class="grid-box"><small>UPTIME</small><br><b style="color:var(--neon);">{{ uptime }}</b></div>
         </div>
-
         <div class="main-card">
-            <h3 style="color:var(--neon); text-align:center; margin-top:0;"><i class="fas fa-calendar-check"></i> REMIT & CALENDAR</h3>
-            
-            <label style="font-size:0.8rem; color:#888;">📅 ရွေးချယ်ထားသောရက်စွဲ</label>
+            <h3 style="color:var(--neon); text-align:center; margin-top:0;">REMIT & CALENDAR</h3>
+            <label>📅 SELECT DATE</label>
             <input type="date" id="mDate" class="input-group" style="color:white; text-align:center; cursor:pointer;" onclick="this.showPicker()">
-            
-            <div style="background:rgba(0,212,255,0.05); padding:15px; border-radius:15px; border:1px dashed #334155; margin-bottom:20px;">
+            <div style="background:rgba(0,212,255,0.05); padding:10px; border-radius:12px; border:1px dashed #334155; margin-bottom:15px; text-align:center;">
                 <form method="POST" action="/set_rate">
                     <small>၁ သိန်းလျှင် = </small>
-                    <input type="number" name="rate" value="{{ rate }}" style="width:70px; background:none; border:1px solid var(--neon); color:var(--neon); text-align:center; border-radius:8px; padding:5px; font-weight:bold;">
-                    <small> ဘတ် </small>
-                    <button style="background:var(--neon); color:black; border:none; padding:5px 12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-left:10px;">OK</button>
+                    <input type="number" name="rate" value="{{ rate }}" style="width:60px; background:none; border:1px solid var(--neon); color:var(--neon); text-align:center;">
+                    <button style="background:var(--neon); border:none; padding:3px 10px; border-radius:5px; font-weight:bold; cursor:pointer;">OK</button>
                 </form>
             </div>
-
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                <div class="input-group"><label style="font-size:0.7rem; color:#888;">မြန်မာငွေ (MMK)</label><input type="number" id="mmk" oninput="m2t()" placeholder="0"></div>
-                <div class="input-group"><label style="font-size:0.7rem; color:#888;">ထိုင်းဘတ် (THB)</label><input type="number" id="thb" oninput="t2m()" placeholder="0"></div>
+                <div class="input-group"><label style="font-size:0.7rem; color:#888;">MMK</label><input type="number" id="mmk" oninput="m2t()" placeholder="0"></div>
+                <div class="input-group"><label style="font-size:0.7rem; color:#888;">THB</label><input type="number" id="thb" oninput="t2m()" placeholder="0"></div>
             </div>
-            
-            <div class="divider"></div>
-
-            <div style="display:flex; justify-content:center; gap:30px; font-size:2rem;">
+            <div style="margin-top:20px; display:flex; justify-content:center; gap:30px; font-size:1.8rem;">
                 <a href="https://t.me/CMT_1411" style="color:#0088cc;"><i class="fab fa-telegram"></i></a>
                 <a href="https://m.me/ChitMinThu1239" style="color:#00c6ff;"><i class="fab fa-facebook-messenger"></i></a>
             </div>
@@ -130,7 +119,8 @@ def set_rate_route():
     except: pass
     return redirect("/")
 
-if __name__ == "__main__": app.run(host="0.0.0.0", port=8080)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
 PY
 
 # 5. Create Web Service Systemd
@@ -154,7 +144,4 @@ systemctl daemon-reload
 systemctl enable zivpn-web
 systemctl restart zivpn-web
 
-echo "-------------------------------------------------------"
-echo "✅ CMT ZIVPN PRO Setup Completed!"
-echo "Web Panel: http://$(hostname -I | awk '{print $1}'):8080"
-echo "-------------------------------------------------------"
+echo "✅ Setup Finished! http://$(hostname -I | awk '{print $1}'):8080"
