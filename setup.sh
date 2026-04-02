@@ -1,5 +1,5 @@
 #!/bin/bash
-# CMT ZIVPN PRO - FINAL MASTER FIX (ALL FEATURES INCLUDED)
+# CMT ZIVPN PRO - CUSTOM MODAL & SEPARATE BUTTONS EDITION
 set -euo pipefail
 apt-get update -y && apt-get install -y curl jq python3 python3-flask conntrack iptables openssl python3-pip >/dev/null
 pip3 install psutil requests >/dev/null
@@ -8,7 +8,6 @@ mkdir -p /etc/zivpn
 ENVF="/etc/zivpn/web.env"
 USERS="/etc/zivpn/users.json"
 
-# Initialize env file with default support links
 if [ ! -f "$ENVF" ]; then
     echo "WEB_ADMIN_USER=admin" > "$ENVF"
     echo "WEB_ADMIN_PASSWORD=admin" >> "$ENVF"
@@ -53,25 +52,35 @@ HTML = """<!doctype html>
 <title>CMT ZIVPN PRO</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
-    :root { --bg: #050810; --card: rgba(16, 22, 42, 0.9); --glow: #ff4500; --cyan: #00d4ff; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
+    :root { --bg: #050810; --card: rgba(16, 22, 42, 0.92); --glow: #ff4500; --cyan: #00d4ff; --yellow: #ffaa00; --green: #2ecc71; --purple: #9b59b6; }
     body { background: var(--bg); color: #fff; font-family: sans-serif; margin: 0; padding-bottom: 90px; overflow-x: hidden; }
     #bgCanvas { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background: #050810; }
     @keyframes rb { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    .rainbow-text { font-weight: bold; background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #9b59b6, #ff0000); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rb 5s linear infinite; }
-    .header { background: rgba(0,0,0,0.6); padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); backdrop-filter: blur(10px); }
-    .logo-img { border-radius: 50%; width: 55px; height: 55px; background: #fff; border: 2px solid #fff; box-shadow: 0 0 10px #fff; }
+    .rainbow-text { font-weight: bold; background: linear-gradient(90deg, #ff0000, #ffaa00, #2ecc71, #00d4ff, #ff0000); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: rb 5s linear infinite; }
+    .header { background: rgba(0,0,0,0.6); padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--cyan); }
+    .logo-img { border-radius: 50%; width: 50px; height: 50px; background: #fff; box-shadow: 0 0 10px #fff; }
     .clock-center { flex-grow: 1; text-align: center; }
     .container { padding: 15px; }
     .grid-menu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
     .grid-box { background: var(--card); border: 2px solid var(--glow); border-radius: 12px; padding: 10px; text-align: center; }
-    .card { background: var(--card); padding: 20px; border-radius: 15px; border: 1.5px solid var(--glow); margin-bottom: 15px; }
-    input { width: 100%; padding: 12px; margin: 8px 0; background: #000; color: #fff; border: 1.5px solid var(--cyan); border-radius: 10px; box-sizing: border-box; outline: none; }
-    .main-btn { background: linear-gradient(90deg, #ff0000, #ffaa00, #00d4ff); padding: 12px; border: none; border-radius: 10px; color: #fff; width: 100%; font-weight: bold; cursor: pointer; }
+    
+    /* ✅ Separate Button Inputs */
+    .input-group { display: flex; gap: 8px; margin-bottom: 12px; }
+    .input-group input { flex-grow: 1; padding: 12px; background: #000; color: #fff; border: 1.5px solid var(--cyan); border-radius: 10px; outline: none; }
+    .btn-set { padding: 12px 15px; background: var(--cyan); border: none; border-radius: 10px; color: #000; font-weight: bold; cursor: pointer; }
+
+    .card { background: var(--card); padding: 20px; border-radius: 15px; border: 2.5px solid var(--glow); margin-bottom: 15px; }
+    .main-btn { background: linear-gradient(90deg, #ff0000, #ffaa00, #00d4ff); padding: 15px; border: none; border-radius: 10px; color: #fff; width: 100%; font-weight: bold; cursor: pointer; font-size: 1em; }
+    
     .table-card { background: var(--card); border-radius: 12px; border: 1.5px solid var(--cyan); overflow-x: auto; padding: 10px; }
     table { width: 100%; border-collapse: collapse; min-width: 600px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; font-size: 0.9em; }
-    .support-row { display: flex; justify-content: center; gap: 10px; margin-top: 20px; padding: 10px; }
-    .btn-support { padding: 10px 15px; border-radius: 10px; text-decoration: none; color: white; font-weight: bold; font-size: 0.9em; display: flex; align-items: center; gap: 5px; }
+    
+    /* ✅ Support Modal */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+    .modal-content { background: var(--card); margin: 20% auto; padding: 30px; width: 80%; max-width: 350px; border-radius: 20px; border: 2px solid var(--cyan); text-align: center; }
+    .modal-btn { display: block; padding: 15px; margin: 10px 0; border-radius: 12px; text-decoration: none; color: #fff; font-weight: bold; font-size: 1.1em; }
+    
     .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(10,14,26,0.95); display: flex; justify-content: space-around; padding: 15px 0; border-top: 2px solid var(--cyan); }
 </style>
 </head><body onload="startClock()">
@@ -80,7 +89,7 @@ HTML = """<!doctype html>
     <div style="max-width:320px; margin:20vh auto; background:var(--card); padding:35px; border-radius:20px; text-align:center; border:3px solid var(--glow);">
         <img src="{{logo}}" width="80" style="background:#fff; border-radius:15px; margin-bottom:20px;">
         <h2 class="rainbow-text">CMT LOGIN</h2>
-        <form method="post" action="/login_check"><input name="u" placeholder="Admin"><input name="p" type="password" placeholder="Pass"><button class="main-btn">LOGIN</button></form>
+        <form method="post" action="/login_check"><input style="width:100%;padding:12px;margin:10px 0;background:#000;color:#fff;border:1px solid var(--cyan);border-radius:10px;" name="u" placeholder="Admin"><input style="width:100%;padding:12px;margin:10px 0;background:#000;color:#fff;border:1px solid var(--cyan);border-radius:10px;" name="p" type="password" placeholder="Pass"><button class="main-btn">LOGIN</button></form>
     </div>
 {% else %}
     <div class="header">
@@ -94,9 +103,16 @@ HTML = """<!doctype html>
             <div class="grid-box" style="border-color:var(--yellow);"><small>RAM</small><div style="color:var(--yellow)">{{sys.ram}}%</div></div>
             <div class="grid-box" style="border-color:var(--green);"><small>DISK</small><div style="color:var(--green)">{{sys.disk}}%</div></div>
         </div>
+
         <div class="card">
-            <form method="post" action="/add"><input name="user" placeholder="အမည်"><input name="password" placeholder="စကားဝှက်"><input name="days" placeholder="ရက်ပေါင်း"><button class="main-btn">အကောင့်ဆောက်မည်</button></form>
+            <form method="post" action="/add">
+                <div class="input-group"><input name="user" id="uname" placeholder="အမည် (မြန်မာလို)"><button type="button" class="btn-set" onclick="alert('အမည်သတ်မှတ်ပြီး')">Set</button></div>
+                <div class="input-group"><input name="password" id="upass" placeholder="စကားဝှက်"><button type="button" class="btn-set" onclick="alert('စကားဝှက်သတ်မှတ်ပြီး')">Set</button></div>
+                <div class="input-group"><input name="days" id="udays" placeholder="ရက်ပေါင်း"><button type="button" class="btn-set" onclick="alert('ရက်သတ်မှတ်ပြီး')">Set</button></div>
+                <button class="main-btn">အကောင့်ဆောက်မည် (Sync)</button>
+            </form>
         </div>
+
         <div class="table-card">
             <table>
                 <thead><tr><th>အမည်</th><th>စကားဝှက်</th><th>သက်တမ်းကုန်</th><th>Status</th><th>Action</th></tr></thead>
@@ -119,13 +135,22 @@ HTML = """<!doctype html>
                 </tbody>
             </table>
         </div>
+    </div>
 
-        <div class="support-row">
-            <a href="{{tg}}" target="_blank" class="btn-support" style="background:#0088cc;"><i class="fab fa-telegram-plane"></i> Telegram</a>
-            <a href="{{fb}}" target="_blank" class="btn-support" style="background:#1877f2;"><i class="fab fa-facebook-f"></i> Facebook</a>
-            <a href="{{msg}}" target="_blank" class="btn-support" style="background:linear-gradient(45deg,#00c6ff,#bc00ff);"><i class="fab fa-facebook-messenger"></i> Messenger</a>
+    <div style="text-align:center; padding:20px;">
+        <button class="main-btn" onclick="openModal()" style="width:200px; background:var(--green);"><i class="fas fa-headset"></i> ဆက်သွယ်ရန်</button>
+    </div>
+
+    <div id="supportModal" class="modal">
+        <div class="modal-content">
+            <h3 class="rainbow-text">ဆက်သွယ်ရန် ရွေးချယ်ပါ</h3>
+            <a href="{{tg}}" target="_blank" class="modal-btn" style="background:#0088cc;"><i class="fab fa-telegram-plane"></i> Telegram</a>
+            <a href="{{fb}}" target="_blank" class="modal-btn" style="background:#1877f2;"><i class="fab fa-facebook-f"></i> Facebook</a>
+            <a href="{{msg}}" target="_blank" class="modal-btn" style="background:linear-gradient(45deg,#00c6ff,#bc00ff);"><i class="fab fa-facebook-messenger"></i> Messenger</a>
+            <button onclick="closeModal()" style="background:none;border:none;color:#aaa;margin-top:15px;cursor:pointer;">ပိတ်မည်</button>
         </div>
     </div>
+
     <div class="bottom-nav">
         <a href="/" style="color:var(--cyan);font-size:1.8em;"><i class="fas fa-home"></i></a>
         <a href="/logout" style="color:#ff4444;font-size:1.8em;"><i class="fas fa-power-off"></i></a>
@@ -134,9 +159,13 @@ HTML = """<!doctype html>
 <script>
     function copyVal(v){ var t=document.createElement("textarea");document.body.appendChild(t);t.value=v;t.select();document.execCommand("copy");document.body.removeChild(t);alert("Copied!"); }
     function startClock(){ setInterval(function(){ var n=new Date(); var mm=new Date(n.getTime()+(n.getTimezoneOffset()*60000)+23400000); var h=mm.getHours(),m=mm.getMinutes(),s=mm.getSeconds(),ap=h>=12?'PM':'AM'; h=h%12||12; h=h<10?'0'+h:h; m=m<10?'0'+m:m; s=s<10?'0'+s:s; document.getElementById('liveTime').innerHTML=h+':'+m+':'+s+' '+ap; document.getElementById('liveDate').innerHTML=mm.toDateString(); }, 1000); }
+    function openModal(){ document.getElementById('supportModal').style.display='block'; }
+    function closeModal(){ document.getElementById('supportModal').style.display='none'; }
+    
+    /* ✅ Background Rainbow Lines */
     const cvs=document.getElementById('bgCanvas'),ctx=cvs.getContext('2d');
     let pts=[],hue=0; function init(){cvs.width=window.innerWidth;cvs.height=window.innerHeight;} window.onresize=init; init();
-    class Pt{constructor(){this.x=Math.random()*cvs.width;this.y=Math.random()*cvs.height;this.vx=(Math.random()-0.5);this.vy=(Math.random()-0.5);this.r=Math.random()*2+1;} up(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>cvs.width)this.vx*=-1;if(this.y<0||this.y>cvs.height)this.vy*=-1;} dr(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fill();}}
+    class Pt{constructor(){this.x=Math.random()*cvs.width;this.y=Math.random()*cvs.height;this.vx=(Math.random()-0.5);this.vy=(Math.random()-0.5);this.r=Math.random()*2+1;} up(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>cvs.width)this.vx*=-1;if(this.y<0||this.y>cvs.height)this.vy*=-1;} dr(){ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fill();}}
     for(let i=0;i<60;i++)pts.push(new Pt());
     function anim(){ctx.clearRect(0,0,cvs.width,cvs.height);hue+=0.5;pts.forEach((p,i)=>{p.up();p.dr();for(let j=i+1;j<pts.length;j++){let d=Math.hypot(p.x-pts[j].x,p.y-pts[j].y);if(d<110){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle='hsla('+(hue+d)+',70%,60%,'+(1-d/110)*0.8+')';ctx.lineWidth=0.8;ctx.stroke();}}});requestAnimationFrame(anim);} anim();
 </script></body></html>"""
@@ -147,21 +176,29 @@ SETTINGS_HTML = """<!doctype html>
 <style>
     body { background: #050810; color: #fff; font-family: sans-serif; padding: 20px; }
     .card { background: rgba(16, 22, 42, 0.9); padding: 15px; border-radius: 12px; border: 1.5px solid #ff4500; margin-bottom: 15px; }
-    input { width: 100%; padding: 10px; margin: 8px 0; background: #000; color: #fff; border: 1px solid #00d4ff; border-radius: 8px; box-sizing: border-box; }
-    .btn { background: #00d4ff; padding: 10px; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; color: #000; }
+    input { width: 100%; padding: 12px; margin: 8px 0; background: #000; color: #fff; border: 1px solid #00d4ff; border-radius: 8px; box-sizing: border-box; }
+    .btn { background: #00d4ff; padding: 12px; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; color: #000; }
 </style>
 </head><body>
-    <h2><i class="fas fa-cog"></i> Settings</h2>
+    <h2><i class="fas fa-cog"></i> ဆက်တင်များ</h2>
     <div class="card">
-        <h4>Support Links</h4>
+        <h4><i class="fas fa-lock"></i> Admin Password ပြောင်းရန်</h4>
+        <form method="post" action="/update_pass">
+            <input name="old" type="password" placeholder="စကားဝှက်အဟောင်း">
+            <input name="new" type="password" placeholder="စကားဝှက်အသစ်">
+            <button class="btn">ပြောင်းမည်</button>
+        </form>
+    </div>
+    <div class="card">
+        <h4><i class="fas fa-link"></i> Support Links ပြင်ရန်</h4>
         <form method="post" action="/update_links">
             <input name="tg" placeholder="Telegram Link" value="{{tg}}">
             <input name="fb" placeholder="Facebook Link" value="{{fb}}">
             <input name="msg" placeholder="Messenger Link" value="{{msg}}">
-            <button class="btn">Save Links</button>
+            <button class="btn">သိမ်းဆည်းမည်</button>
         </form>
     </div>
-    <a href="/" style="color:#aaa; text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to Home</a>
+    <a href="/" style="color:#aaa; text-decoration:none;"><i class="fas fa-arrow-left"></i> ပင်မစာမျက်နှာသို့</a>
 </body></html>"""
 
 @app.route("/")
@@ -186,6 +223,12 @@ def login_check():
 def settings():
     if not session.get("auth"): return redirect("/")
     return render_template_string(SETTINGS_HTML, tg=get_env("SUPPORT_TG"), fb=get_env("SUPPORT_FB"), msg=get_env("SUPPORT_MSG"))
+
+@app.route("/update_pass", methods=["POST"])
+def update_pass():
+    if session.get("auth") and hmac.compare_digest(request.form.get("old"), get_env("WEB_ADMIN_PASSWORD")):
+        set_env("WEB_ADMIN_PASSWORD", request.form.get("new"))
+    return redirect("/settings")
 
 @app.route("/update_links", methods=["POST"])
 def update_links():
